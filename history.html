@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulation History</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 50%, #f1f5f9 100%);
+            color: #0f172a;
+            min-height: 100vh;
+        }
+
+        .nav {
+            background: rgba(255,255,255,.96);
+            padding: 16px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+            border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(16px);
+            position: relative;
+        }
+        .nav::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed, #0d9488);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .nav-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #4f46e5;
+            letter-spacing: -.02em;
+        }
+
+        .nav-user {
+            color: #718096;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .btn-home {
+            padding: 9px 20px;
+            background: linear-gradient(135deg, #0d9488, #0f766e);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .btn-home:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(13,148,136,.35);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 28px auto;
+            padding: 0 24px;
+        }
+
+        h1 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.65rem;
+            margin-bottom: 10px;
+            color: #0f172a;
+            font-weight: 800;
+            letter-spacing: -.03em;
+        }
+        .page-lead {
+            color: #64748b;
+            font-size: 0.95rem;
+            max-width: 640px;
+            margin-bottom: 22px;
+            line-height: 1.6;
+        }
+
+        .history-table {
+            background: rgba(255,255,255,.97);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(102,126,234,.12);
+            box-shadow: 0 2px 4px rgba(0,0,0,.04), 0 12px 36px rgba(102,126,234,.10);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, rgba(102,126,234,.05), rgba(118,75,162,.04));
+        }
+
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            border-bottom: 1px solid rgba(102,126,234,.12);
+        }
+
+        td {
+            padding: 13px 16px;
+            border-bottom: 1px solid rgba(0,0,0,.05);
+            color: #4a5568;
+            font-size: 14px;
+        }
+
+        tbody tr { transition: background .12s; }
+        tbody tr:nth-child(even) { background: rgba(102,126,234,.025); }
+        tbody tr:hover { background: rgba(102,126,234,.07); }
+        tbody tr:last-child td { border-bottom: none; }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .04em;
+        }
+        .status-success { background: rgba(56,178,172,.15); color: #2c7a7b; border: 1px solid rgba(56,178,172,.25); }
+        .status-danger  { background: rgba(245,101,101,.12); color: #c53030; border: 1px solid rgba(245,101,101,.25); }
+
+        .btn-view {
+            padding: 7px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .btn-view:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102,126,234,.4);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+        .empty-state h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #667eea;
+            font-weight: 700;
+        }
+        .empty-state p { margin-bottom: 20px; font-size: 14px; }
+        .empty-state a {
+            padding: 11px 28px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .empty-state a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102,126,234,.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <div class="nav-left">
+            <div class="nav-title">Platooning V2V · Riwayat</div>
+            <a href="/dashboard.html" class="btn-home">🏠 Beranda</a>
+            <a href="/analysis.html" class="btn-home" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">📊 Analysis</a>
+        </div>
+        <div class="nav-user">
+            <span id="userChip"></span>
+            <button onclick="window.AUTH.logout()" style="margin-left:8px;padding:4px 12px;border-radius:8px;border:1px solid rgba(220,38,38,0.3);background:#fff;color:#dc2626;cursor:pointer;font-size:0.78rem;font-weight:600">Keluar</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Riwayat simulasi Anda</h1>
+        <p class="page-lead">Setiap baris adalah satu eksperimen yang tersimpan. Gunakan <strong>Analysis</strong> untuk membuka grafik penuh dari file log, atau <strong>Details</strong> untuk melihat ringkasan parameter.</p>
+
+        <div id="historyContainer">
+            <div class="history-table"><div class="empty-state"><h2>Memuat data…</h2></div></div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/config.js"></script>
+    <script>
+        window.AUTH.requireLogin();
+        document.getElementById('userChip').textContent = window.AUTH.getName() || window.AUTH.getNim();
+
+        $.ajax({
+            url: '/api/history',
+            method: 'GET',
+            success: function (data) {
+                var history = data.history || [];
+                var html = '';
+                if (history.length === 0) {
+                    html = '<div class="history-table"><div class="empty-state"><h2>Belum Ada Riwayat</h2><p>Anda belum menjalankan simulasi.</p><a href="/configure.html">Mulai Simulasi Pertama</a></div></div>';
+                } else {
+                    html = '<div class="history-table"><table><thead><tr>' +
+                        '<th>Date & Time</th><th>Vehicles</th><th>Latency (ms)</th>' +
+                        '<th>Packet Loss (%)</th><th>Duration (s)</th><th>Avg Error (m)</th>' +
+                        '<th>Collision</th><th>Action</th></tr></thead><tbody>';
+                    history.forEach(function (r) {
+                        var ts = r.timestamp ? r.timestamp.replace('T', ' ').substring(0, 19) : '-';
+                        var col = r.collision
+                            ? '<span class="status-badge status-danger">YES</span>'
+                            : '<span class="status-badge status-success">NO</span>';
+                        html += '<tr>' +
+                            '<td>' + ts + '</td>' +
+                            '<td>' + (r.num_vehicles || '-') + '</td>' +
+                            '<td>' + (r.latency || '-') + '</td>' +
+                            '<td>' + (r.packet_loss || '-') + '</td>' +
+                            '<td>' + (r.duration ? parseFloat(r.duration).toFixed(1) : '-') + '</td>' +
+                            '<td>-</td>' +
+                            '<td>' + col + '</td>' +
+                            '<td style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">' +
+                            '<a href="/history_detail.html?id=' + r.id + '" class="btn-view">Details</a>' +
+                            '<a href="/analysis.html?experiment_id=' + r.experiment_id + '" class="btn-view" style="background:linear-gradient(135deg,#38b2ac,#2c7a7b)">📊 Analysis</a>' +
+                            '</td></tr>';
+                    });
+                    html += '</tbody></table></div>';
+                }
+                document.getElementById('historyContainer').innerHTML = html;
+            },
+            error: function () {
+                document.getElementById('historyContainer').innerHTML =
+                    '<div class="history-table"><div class="empty-state"><h2>Gagal memuat data</h2><p>Periksa koneksi ke server backend.</p></div></div>';
+            }
+        });
+    </script>
+</body>
+</html>

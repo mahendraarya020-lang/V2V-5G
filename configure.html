@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Configure Simulation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #64748b;
+      --brand: #4f46e5;
+      --brand2: #7c3aed;
+      --teal: #0d9488;
+      --card-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 45%, #f1f5f9 100%);
+      color: var(--ink);
+      font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .nav {
+      background: rgba(255,255,255,.96);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      padding: 14px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 18px;
+      box-shadow: var(--card-shadow);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      margin-bottom: 18px;
+      position: relative;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .nav::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--brand), var(--brand2), var(--teal));
+      border-radius: 18px 18px 0 0;
+    }
+
+    .nav-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--brand);
+      font-weight: 800;
+      font-size: 0.95rem;
+      letter-spacing: -.02em;
+    }
+
+    .btn {
+      padding: 8px 18px;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: .82rem;
+      text-decoration: none;
+      display: inline-block;
+      transition: all .2s;
+    }
+
+    .btn-green {
+      background: linear-gradient(135deg, var(--teal), #0f766e);
+      color: #fff;
+    }
+
+    .btn-purple {
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      color: #fff;
+    }
+
+    .btn-orange {
+      background: linear-gradient(135deg, #ea580c, #c2410c);
+      color: #fff;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0,0,0,.14);
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .card {
+      background: rgba(255,255,255,.98);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      padding: 22px;
+      border-radius: 18px;
+      box-shadow: var(--card-shadow);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .card-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: .85rem;
+      font-weight: 800;
+      color: var(--brand);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(79, 70, 229, 0.12);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: .02em;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      color: #4a5568;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      background: #fff;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      color: #2d3748;
+      padding: 9px 12px;
+      font-size: .9rem;
+      transition: border-color .2s;
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, .1);
+    }
+
+    .hint {
+      font-size: .72rem;
+      color: #718096;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .hint strong {
+      color: #4a5568;
+    }
+
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .range-row input[type=range] {
+      flex: 1;
+      accent-color: #667eea;
+    }
+
+    .range-val {
+      background: rgba(102, 126, 234, .1);
+      border: 1px solid rgba(102, 126, 234, .2);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-family: monospace;
+      font-size: .85rem;
+      min-width: 56px;
+      text-align: center;
+      color: #667eea;
+    }
+
+    .section-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .risk-box {
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 10px;
+      border: 1.5px solid;
+    }
+
+    .risk-LOW {
+      background: rgba(56, 178, 172, .06);
+      border-color: rgba(56, 178, 172, .25);
+    }
+
+    .risk-MEDIUM {
+      background: rgba(237, 137, 54, .06);
+      border-color: rgba(237, 137, 54, .25);
+    }
+
+    .risk-HIGH {
+      background: rgba(245, 101, 101, .06);
+      border-color: rgba(245, 101, 101, .25);
+    }
+
+    .risk-title {
+      font-weight: 800;
+      font-size: .9rem;
+      margin-bottom: 8px;
+    }
+
+    .risk-LOW .risk-title {
+      color: #2c7a7b;
+    }
+
+    .risk-MEDIUM .risk-title {
+      color: #c05621;
+    }
+
+    .risk-HIGH .risk-title {
+      color: #c53030;
+    }
+
+    .risk-item {
+      font-size: .8rem;
+      padding: 3px 0;
+      color: #718096;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .info-cell {
+      background: rgba(102, 126, 234, .06);
+      padding: 10px;
+      border-radius: 7px;
+      text-align: center;
+    }
+
+    .info-cell-label {
+      font-size: .68rem;
+      color: #718096;
+      text-transform: uppercase;
+    }
+
+    .info-cell-val {
+      font-size: .9rem;
+      font-weight: 700;
+      color: #667eea;
+      font-family: monospace;
+    }
+
+    .topology-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .topo-opt {
+      border: 2px solid #e2e8f0;
+      border-radius: 9px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all .2s;
+      text-align: center;
+      background: #fff;
+    }
+
+    .topo-opt:hover {
+      border-color: #667eea;
+    }
+
+    .topo-opt.selected {
+      border-color: #667eea;
+      background: rgba(102, 126, 234, .08);
+    }
+
+    .topo-opt-title {
+      font-weight: 700;
+      font-size: .88rem;
+      margin-bottom: 4px;
+      color: #667eea;
+    }
+
+    .topo-opt-desc {
+      font-size: .72rem;
+      color: #718096;
+    }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .prof-opt {
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px;
+      cursor: pointer;
+      transition: all .2s;
+      text-align: center;
+      background: #fff;
+    }
+
+    .prof-opt:hover {
+      border-color: #38b2ac;
+    }
+
+    .prof-opt.selected {
+      border-color: #38b2ac;
+      background: rgba(56, 178, 172, .06);
+    }
+
+    .full-col {
+      grid-column: 1/-1;
+    }
+
+    .page-intro {
+      background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(13, 148, 136, 0.06));
+      border: 1px solid rgba(79, 70, 229, 0.15);
+      border-radius: 18px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+    }
+    @media (max-width: 720px) {
+      .page-intro { grid-template-columns: 1fr; }
+    }
+    .page-intro h2 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--ink);
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+    .page-intro p {
+      font-size: 0.86rem;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 720px;
+    }
+    .page-intro a {
+      color: var(--brand);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .page-intro a:hover { text-decoration: underline; }
+    .intro-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .intro-steps span { opacity: 0.85; font-weight: 500; }
+  </style>
+</head>
+
+<body>
+  <div class="nav">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <span class="nav-title">⚙️ Konfigurasi simulasi</span>
+      <a href="/dashboard" class="btn btn-green">🏠 Beranda</a>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-orange" id="validateBtn">🔍 Validasi</button>
+      <button class="btn btn-purple" id="startBtn">▶ Jalankan</button>
+      <a href="/compare" class="btn" style="background:linear-gradient(135deg,#ed64a6,#d53f8c);color:#fff">⚖️ ACC vs
+        CACC</a>
+    </div>
+  </div>
+
+  <section class="page-intro" aria-label="Pengantar">
+    <div>
+      <h2>Atur “dunia percobaan” platoon Anda</h2>
+      <p>Di halaman ini Anda memilih <strong>berapa mobil</strong>, <strong>jarak awal</strong>, <strong>seberapa cepat</strong> mereka ingin berjalan, dan <strong>seberapa baik jaringan 5G</strong>-nya. Tidak perlu khawatir salah: gunakan <strong>Validasi</strong> untuk peringatan risiko, lalu <strong>Jalankan</strong> untuk membuka simulasi hidup. Penjelasan singkat ada di bawah setiap penggeser.</p>
+      <p style="margin-top:8px">Kembali ke <a href="/dashboard">beranda edukasi</a> kapan saja.</p>
+    </div>
+    <div class="intro-steps">
+      <div>① Validasi parameter</div>
+      <span>→ cek risiko tabrakan / tak stabil</span>
+      <div>② Jalankan</div>
+      <span>→ buka layar simulasi</span>
+      <div>③ Stop → Analysis</div>
+      <span>→ grafik &amp; kesimpulan</span>
+    </div>
+  </section>
+
+  <div class="main-grid">
+
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <div class="card">
+        <div class="card-title">🚛 Platoon Setup</div>
+        <div class="section-row">
+          <div class="field">
+            <label>Number of Platoons</label>
+            <div class="range-row"><input type="range" id="num_platoons" min="1" max="3" value="1"
+                oninput="sync(this)"><span class="range-val" id="v_num_platoons">1</span></div>
+          </div>
+          <div class="field">
+            <label>Vehicles per Platoon</label>
+            <div class="range-row"><input type="range" id="num_vehicles" min="2" max="8" value="4"
+                oninput="sync(this)"><span class="range-val" id="v_num_vehicles">4</span></div>
+          </div>
+          <div class="field">
+            <label>Initial Spacing (m)</label>
+            <div class="range-row"><input type="range" id="initial_spacing" min="3" max="40" value="15"
+                oninput="sync(this)"><span class="range-val" id="v_initial_spacing">15</span></div>
+            <div class="hint">GCDC benchmark min: 8m at 20 m/s. <strong>Gap < 5m=HIGH RISK.</strong>
+            </div>
+          </div>
+          <div class="field">
+            <label>Desired Speed (m/s)</label>
+            <div class="range-row"><input type="range" id="desired_speed" min="5" max="35" value="20"
+                oninput="sync(this)"><span class="range-val" id="v_desired_speed">20</span></div>
+            <div class="hint">20 m/s = 72 km/h (standard highway platooning)</div>
+          </div>
+          <div class="field">
+            <label>Random seed (opsional)</label>
+            <input type="number" id="random_seed" placeholder="Kosong = acak setiap run"
+              style="width:100%;max-width:280px;padding:9px 12px;border-radius:10px;border:1px solid #e2e8f0;font-size:.88rem;font-family:inherit">
+            <div class="hint">Isi angka untuk mengulang hasil stokastik sama (packet loss 3GPP, delay ECDSA, jitter).
+              Disimpan di log sebagai <code>random_seed_used</code>.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🎮 PID + Feedforward CACC Controller</div>
+        <div class="hint" style="margin-bottom:12px">Based on Rajamani (2000) / Ploeg (2011) PATH CACC reference model.
+          u = Kp·e + Kd·ė + Ki·∫e·dt + α·a_prev</div>
+        <div class="section-row">
+          <div class="field">
+            <label>Kp — Proportional Gain</label>
+            <div class="range-row"><input type="range" id="kp" min="0.1" max="2.0" step="0.05" value="0.5"
+                oninput="sync(this)"><span class="range-val" id="v_kp">0.50</span></div>
+            <div class="hint">Literature: 0.2–0.8 (GCDC 2011). Higher = faster response, lower stability margin.</div>
+          </div>
+          <div class="field">
+            <label>Kd — Derivative Gain</label>
+            <div class="range-row"><input type="range" id="kd" min="0.0" max="1.5" step="0.05" value="0.3"
+                oninput="sync(this)"><span class="range-val" id="v_kd">0.30</span></div>
+            <div class="hint">Literature: 0.1–0.5. Damping. Too high = noise amplification.</div>
+          </div>
+          <div class="field">
+            <label>Ki — Integral Gain</label>
+            <div class="range-row"><input type="range" id="ki" min="0.0" max="0.2" step="0.005" value="0.01"
+                oninput="sync(this)"><span class="range-val" id="v_ki">0.010</span></div>
+            <div class="hint"><strong>Ki > 0.1 = windup risk.</strong> Anti-windup clamp ±5m·s active. Literature:
+              0.001–0.05.</div>
+          </div>
+          <div class="field">
+            <label>α — Feedforward Gain</label>
+            <div class="range-row"><input type="range" id="alpha" min="0.0" max="1.0" step="0.05" value="0.9"
+                oninput="sync(this)"><span class="range-val" id="v_alpha">0.90</span></div>
+            <div class="hint">Uses predecessor acceleration. α=0.9 optimal (Ploeg 2011). α=0 → pure PID.</div>
+          </div>
+          <div class="field">
+            <label>τact — Actuation Lag (s)</label>
+            <div class="range-row"><input type="range" id="tau_act" min="0.0" max="0.8" step="0.05" value="0.25"
+                oninput="sync(this)"><span class="range-val" id="v_tau_act">0.25</span></div>
+            <div class="hint"><strong>τact > 0.5s = instability risk.</strong> Real vehicles: 0.1–0.3s (GCDC measured).
+              First-order lag filter.</div>
+          </div>
+          <div class="field">
+            <label>Time Headway h (s)</label>
+            <div class="range-row"><input type="range" id="time_headway" min="0.2" max="2.0" step="0.1" value="0.8"
+                oninput="sync(this)"><span class="range-val" id="v_time_headway">0.80</span></div>
+            <div class="hint">CTH spacing policy: d = d_min + h·v. h=0.8s standard. Multiplied by FSM headway factor.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔀 Communication Topology (G-06)</div>
+        <div class="hint" style="margin-bottom:10px">Ref: Ploeg et al. (2014). Determines which vehicle's data is used
+          for feedforward.</div>
+        <div class="topology-grid">
+          <div class="topo-opt selected" id="topo_predecessor" onclick="selectTopo('predecessor')">
+            <div class="topo-opt-title">📡 Predecessor Following</div>
+            <div class="topo-opt-desc">Each vehicle uses only immediate predecessor data. Standard CACC. Most common in
+              literature.</div>
+          </div>
+          <div class="topo-opt" id="topo_hybrid" onclick="selectTopo('hybrid')">
+            <div class="topo-opt-title">📡📡 Hybrid (Leader + Predecessor)</div>
+            <div class="topo-opt-desc">Uses leader acceleration as feedforward AND predecessor for position/velocity.
+              ~15–25% better stability (Ploeg 2014).</div>
+          </div>
+        </div>
+        <input type="hidden" id="topology" value="predecessor">
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <div class="card">
+        <div class="card-title">📡 5G Network Parameters</div>
+        <div class="section-row">
+          <div class="field">
+            <label>E2E Latency (ms)</label>
+            <div class="range-row"><input type="range" id="latency_ms" min="1" max="200" value="10"
+                oninput="sync(this)"><span class="range-val" id="v_latency_ms">10</span></div>
+            <div class="hint">URLLC target: &lt;10ms. 5G NR Rel-16: ~5–8ms typical. &gt;50ms = MEDIUM risk.</div>
+          </div>
+          <div class="field">
+            <label>Packet Loss (%)</label>
+            <div class="range-row"><input type="range" id="packet_loss" min="0" max="30" step="0.5" value="1"
+                oninput="sync(this)"><span class="range-val" id="v_packet_loss">1.0</span></div>
+            <div class="hint">3GPP PDR target: &gt;95%. &gt;5% = frequent FSM mode switches. Model: 3GPP TR 38.885 path
+              loss.</div>
+          </div>
+          <div class="field">
+            <label>Jitter (ms)</label>
+            <div class="range-row"><input type="range" id="jitter_ms" min="0" max="30" step="0.5" value="2"
+                oninput="sync(this)"><span class="range-val" id="v_jitter_ms">2.0</span></div>
+          </div>
+          <div class="field">
+            <label>Security Delay μ (ms) — ECDSA</label>
+            <div class="range-row"><input type="range" id="security_delay_ms" min="0" max="15" step="0.5" value="3"
+                oninput="sync(this)"><span class="range-val" id="v_security_delay_ms">3.0</span></div>
+            <div class="hint">G-03: Stochastic model N(μ, σ=0.5ms). Brecht (2018): ECDSA-256 = 2–5ms. Clipped [1,10]ms.
+            </div>
+          </div>
+          <div class="field">
+            <label>Network Slicing</label>
+            <select id="network_slicing">
+              <option value="URLLC">URLLC — Ultra-Low Latency (V2X safety)</option>
+              <option value="eMBB">eMBB — Enhanced Mobile Broadband</option>
+              <option value="mMTC">mMTC — Massive IoT</option>
+            </select>
+            <div class="hint">URLLC: 1× delay. eMBB: 1.5×. mMTC: 2×. 3GPP TS 22.186.</div>
+          </div>
+          <div class="field">
+            <label>RSU / Edge Assistance</label>
+            <select id="rsu_enabled">
+              <option value="true">Enabled (reduces queuing delay)</option>
+              <option value="false">Disabled</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-title" style="margin-top:14px;font-size:.8rem;color:#718096">📊 5G NR Fixed Parameters (3GPP
+          Rel-16)</div>
+        <div class="info-grid">
+          <div class="info-cell">
+            <div class="info-cell-label">Carrier Freq</div>
+            <div class="info-cell-val">5.9 GHz</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Bandwidth</div>
+            <div class="info-cell-val">20 MHz</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">TX Power</div>
+            <div class="info-cell-val">23 dBm</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Min SINR</div>
+            <div class="info-cell-val">&gt;5 dB</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Path Loss Exp (LOS)</div>
+            <div class="info-cell-val">n=1.77</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Shadow Fade σ</div>
+            <div class="info-cell-val">3.0 dB</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Msg Freq</div>
+            <div class="info-cell-val">10 Hz</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Mode</div>
+            <div class="info-cell-val">NR-V2X Sl</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-cell-label">Standard</div>
+            <div class="info-cell-val">TR 38.885</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🛰️ Lingkungan dinamis, RSU &amp; kontrol adaptif</div>
+        <div class="hint" style="margin-bottom:12px;line-height:1.55">
+          Menjawab narasi <strong>Bab 1</strong>: (1) segmen jalan berliku memperburuk kanal (NLOS, loss tambahan, delay);
+          (2) <strong>RSU / edge</strong> memperpendek antrian &amp; relay saat konvoi dalam jangkauan;
+          (3) <strong>joint comm–control</strong> memperlebar time headway otomatis saat AoI tinggi atau PDR rendah — melengkapi FSM CACC→ACC.
+        </div>
+        <div class="section-row">
+          <div class="field">
+            <label>Kontrol adaptif (perlebar <em>h</em> saat jaringan buruk)</label>
+            <select id="adaptive_comm_control">
+              <option value="true" selected>Aktif — disarankan</option>
+              <option value="false">Mati (headway tetap)</option>
+            </select>
+            <div class="hint">Memadukan metrik komunikasi dengan parameter kontrol longitudinal.</div>
+          </div>
+          <div class="field">
+            <label>Zona tikungan (1D, memperburuk V2V)</label>
+            <select id="curve_enabled">
+              <option value="false" selected>Mati</option>
+              <option value="true">Aktif</option>
+            </select>
+            <div class="hint">Default posisi ~380–500 m sejalan dengan formasi awal (leader ~500 m).</div>
+          </div>
+          <div class="field">
+            <label>Awal zona tikungan (m)</label>
+            <div class="range-row"><input type="range" id="curve_start_m" min="50" max="750" step="5" value="380"
+                oninput="sync(this)"><span class="range-val" id="v_curve_start_m">380</span></div>
+          </div>
+          <div class="field">
+            <label>Akhir zona tikungan (m)</label>
+            <div class="range-row"><input type="range" id="curve_end_m" min="100" max="850" step="5" value="500"
+                oninput="sync(this)"><span class="range-val" id="v_curve_end_m">500</span></div>
+          </div>
+          <div class="field">
+            <label>Posisi RSU di sumbu jalan (m)</label>
+            <div class="range-row"><input type="range" id="rsu_position_m" min="150" max="750" step="5" value="460"
+                oninput="sync(this)"><span class="range-val" id="v_rsu_position_m">460</span></div>
+          </div>
+          <div class="field">
+            <label>Jari-jari layanan RSU (m)</label>
+            <div class="range-row"><input type="range" id="rsu_radius_m" min="40" max="220" step="5" value="95"
+                oninput="sync(this)"><span class="range-val" id="v_rsu_radius_m">95</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔀 Reposisi manuver (swap / promosi)</div>
+        <div class="hint" style="margin-bottom:12px;line-height:1.55">
+          <strong>Penundaan</strong> (s) sebelum kendaraan mulai bergerak menuju slot longitudinal baru, dan
+          <strong>batas kecepatan reposisi</strong> (m/s) per skenario — menggantikan teleportasi mentah.
+          Global <code>maneuver_reposition_speed_ms</code> dipakai jika cap skenario tidak valid.
+        </div>
+        <div class="section-row">
+          <div class="field">
+            <label>Cap global fallback (m/s)</label>
+            <input type="number" id="maneuver_reposition_speed_ms" min="4" max="45" step="1" value="24" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#e2e8f0">
+          </div>
+          <div class="field">
+            <label>Swap leader — tunda (s)</label>
+            <input type="number" id="reposition_swap_delay_s" min="0" max="3" step="0.05" value="0.2" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#e2e8f0">
+          </div>
+          <div class="field">
+            <label>Swap leader — max kecepatan (m/s)</label>
+            <input type="number" id="reposition_swap_speed_ms" min="4" max="45" step="1" value="20" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#e2e8f0">
+          </div>
+          <div class="field">
+            <label>Promosi manual — tunda (s)</label>
+            <input type="number" id="reposition_promote_delay_s" min="0" max="3" step="0.05" value="0.25" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#e2e8f0">
+          </div>
+          <div class="field">
+            <label>Promosi manual — max kecepatan (m/s)</label>
+            <input type="number" id="reposition_promote_speed_ms" min="4" max="45" step="1" value="16" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#e2e8f0">
+          </div>
+          <div class="field">
+            <label>Promosi darurat — tunda (s)</label>
+            <input type="number" id="reposition_emergency_delay_s" min="0" max="2" step="0.05" value="0" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#e2e8f0">
+          </div>
+          <div class="field">
+            <label>Promosi darurat — max kecepatan (m/s)</label>
+            <input type="number" id="reposition_emergency_speed_ms" min="6" max="50" step="1" value="28" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#e2e8f0">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔁 FSM / Age of Information (G-05)</div>
+        <div class="section-row">
+          <div class="field">
+            <label>AoI: CACC → DEGRADED (ms)</label>
+            <div class="range-row"><input type="range" id="aoi_cacc_degrade_ms" min="50" max="300" step="10" value="100"
+                oninput="sync(this)"><span class="range-val" id="v_aoi_cacc_degrade_ms">100</span></div>
+            <div class="hint">FSM transition threshold. Kaul (2012): M/D/1 theoretical threshold ≈ 100ms at 10Hz.</div>
+          </div>
+          <div class="field">
+            <label>AoI: DEGRADED → ACC (ms)</label>
+            <div class="range-row"><input type="range" id="aoi_degrade_acc_ms" min="200" max="1000" step="50"
+                value="500" oninput="sync(this)"><span class="range-val" id="v_aoi_degrade_acc_ms">500</span></div>
+            <div class="hint">3GPP TS 22.186: max update interval for safety-critical V2X = 500ms.</div>
+          </div>
+          <div class="field">
+            <label>V2V Timeout (ms)</label>
+            <div class="range-row"><input type="range" id="v2v_timeout" min="100" max="1000" step="50" value="200"
+                oninput="sync(this)"><span class="range-val" id="v_v2v_timeout">200</span></div>
+          </div>
+          <div class="field">
+            <label>Min Safe Spacing (m)</label>
+            <div class="range-row"><input type="range" id="min_safe_spacing" min="1" max="10" step="0.5" value="2"
+                oninput="sync(this)"><span class="range-val" id="v_min_safe_spacing">2.0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏁 Leader Profile</div>
+        <div class="hint" style="margin-bottom:10px">Determines disturbance character injected by the leader vehicle.
+          Ref: GCDC 2012 test scenarios.</div>
+        <div class="profile-grid">
+          <div class="prof-opt" id="prof_smooth" onclick="selectProfile('smooth')">
+            <div style="font-size:1.4rem">🌊</div>
+            <div class="topo-opt-title">Smooth</div>
+            <div class="topo-opt-desc">Sinusoidal ±1 m/s, f=0.1Hz. Tests frequency response.</div>
+          </div>
+          <div class="prof-opt selected" id="prof_normal" onclick="selectProfile('normal')">
+            <div style="font-size:1.4rem">🚗</div>
+            <div class="topo-opt-title">Normal</div>
+            <div class="topo-opt-desc">Step speed tracking. Standard benchmark.</div>
+          </div>
+          <div class="prof-opt" id="prof_aggressive" onclick="selectProfile('aggressive')">
+            <div style="font-size:1.4rem">⚡</div>
+            <div class="topo-opt-title">Aggressive</div>
+            <div class="topo-opt-desc">Random ±2 m/s burst perturbations.</div>
+          </div>
+        </div>
+        <input type="hidden" id="leader_profile" value="normal">
+      </div>
+
+    </div>
+  </div><!-- main-grid -->
+
+  <!-- Risk Assessment -->
+  <div id="riskBox" style="margin-top:16px"></div>
+
+  <script>
+    function sync(el) {
+      const v = parseFloat(el.value);
+      document.getElementById('v_' + el.id).textContent = v.toFixed(el.step && el.step.includes('.') ? el.step.split('.')[1].length : 0);
+    }
+    function selectTopo(val) {
+      document.getElementById('topology').value = val;
+      document.querySelectorAll('.topo-opt').forEach(el => el.classList.remove('selected'));
+      document.getElementById('topo_' + val).classList.add('selected');
+    }
+    function selectProfile(val) {
+      document.getElementById('leader_profile').value = val;
+      document.querySelectorAll('.prof-opt').forEach(el => el.classList.remove('selected'));
+      document.getElementById('prof_' + val).classList.add('selected');
+    }
+
+    function getConfig() {
+      return {
+        num_platoons: parseInt(document.getElementById('num_platoons').value),
+        num_vehicles: parseInt(document.getElementById('num_vehicles').value),
+        initial_spacing: parseFloat(document.getElementById('initial_spacing').value),
+        desired_speed: parseFloat(document.getElementById('desired_speed').value),
+        kp: parseFloat(document.getElementById('kp').value),
+        kd: parseFloat(document.getElementById('kd').value),
+        ki: parseFloat(document.getElementById('ki').value),
+        alpha: parseFloat(document.getElementById('alpha').value),
+        tau_act: parseFloat(document.getElementById('tau_act').value),
+        time_headway: parseFloat(document.getElementById('time_headway').value),
+        latency_ms: parseFloat(document.getElementById('latency_ms').value),
+        packet_loss: parseFloat(document.getElementById('packet_loss').value),
+        jitter_ms: parseFloat(document.getElementById('jitter_ms').value),
+        security_delay_ms: parseFloat(document.getElementById('security_delay_ms').value),
+        network_slicing: document.getElementById('network_slicing').value,
+        rsu_enabled: document.getElementById('rsu_enabled').value === 'true',
+        rsu_position_m: parseFloat(document.getElementById('rsu_position_m').value),
+        rsu_radius_m: parseFloat(document.getElementById('rsu_radius_m').value),
+        adaptive_comm_control: document.getElementById('adaptive_comm_control').value === 'true',
+        curve_enabled: document.getElementById('curve_enabled').value === 'true',
+        curve_start_m: parseFloat(document.getElementById('curve_start_m').value),
+        curve_end_m: parseFloat(document.getElementById('curve_end_m').value),
+        aoi_cacc_degrade: parseFloat(document.getElementById('aoi_cacc_degrade_ms').value) / 1000,
+        aoi_degrade_acc: parseFloat(document.getElementById('aoi_degrade_acc_ms').value) / 1000,
+        v2v_timeout: parseFloat(document.getElementById('v2v_timeout').value),
+        min_safe_spacing: parseFloat(document.getElementById('min_safe_spacing').value),
+        topology: document.getElementById('topology').value,
+        leader_profile: document.getElementById('leader_profile').value,
+        maneuver_reposition_speed_ms: parseFloat(document.getElementById('maneuver_reposition_speed_ms').value),
+        reposition_swap_delay_s: parseFloat(document.getElementById('reposition_swap_delay_s').value),
+        reposition_swap_speed_ms: parseFloat(document.getElementById('reposition_swap_speed_ms').value),
+        reposition_promote_delay_s: parseFloat(document.getElementById('reposition_promote_delay_s').value),
+        reposition_promote_speed_ms: parseFloat(document.getElementById('reposition_promote_speed_ms').value),
+        reposition_emergency_delay_s: parseFloat(document.getElementById('reposition_emergency_delay_s').value),
+        reposition_emergency_speed_ms: parseFloat(document.getElementById('reposition_emergency_speed_ms').value),
+        max_accel: 3.0, max_decel: 6.0, bandwidth_mbps: 100,
+        random_seed: (() => {
+          const raw = (document.getElementById('random_seed') || {}).value;
+          if (raw == null || String(raw).trim() === '') return null;
+          const n = parseInt(raw, 10);
+          return Number.isFinite(n) ? n : null;
+        })()
+      };
+    }
+
+    async function validate() {
+      const cfg = getConfig();
+      const r = await fetch('/api/validate_config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+      const data = await r.json();
+      const risks = data.risks || [];
+      const level = data.risk_level || 'LOW';
+      const riskLabels = { LOW: '✅ LOW RISK', MEDIUM: '⚠️ MEDIUM RISK', HIGH: '🚨 HIGH RISK' };
+      let html = `<div class="risk-box risk-${level}"><div class="risk-title">${riskLabels[level]}</div>`;
+      if (risks.length === 0) html += '<div class="risk-item">All parameters within safe operating range.</div>';
+      else risks.forEach(r => { html += `<div class="risk-item">• ${r}</div>`; });
+      html += '</div>';
+      document.getElementById('riskBox').innerHTML = html;
+    }
+
+    document.getElementById('validateBtn').addEventListener('click', validate);
+    document.getElementById('startBtn').addEventListener('click', () => {
+      const cfg = getConfig();
+      sessionStorage.setItem('simulationConfig', JSON.stringify(cfg));
+      window.location.href = '/simulation';
+    });
+
+    // Auto-sync on load
+    document.querySelectorAll('input[type=range]').forEach(el => {
+      const span = document.getElementById('v_' + el.id);
+      if (span) { const v = parseFloat(el.value); span.textContent = v.toFixed(el.step && el.step.includes('.') ? el.step.split('.')[1].length : 0); }
+    });
+  </script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="/config.js"></script>
+  <script>window.AUTH.requireLogin();</script>
+</body>
+
+</html>

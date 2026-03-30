@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Analisis Eksperimen — Platooning V2V</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 40%, #f1f5f9 100%);
+      color: #0f172a;
+      font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+      padding: 16px;
+      min-height: 100vh;
+    }
+
+    .nav {
+      background: rgba(255,255,255,.96);
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+      position: relative;
+    }
+    .nav::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #4f46e5, #7c3aed, #0d9488);
+      border-radius: 16px 16px 0 0;
+    }
+
+    .nav-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: .92rem;
+      color: #4f46e5;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+
+    .btn {
+      padding: 7px 16px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: .82rem;
+      text-decoration: none;
+      display: inline-block;
+      transition: all .18s;
+    }
+
+    .btn-green {
+      background: linear-gradient(135deg, #0d9488, #0f766e);
+      color: #fff;
+    }
+
+    .btn-purple {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff;
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, .95);
+      color: #4f46e5;
+      border: 1.5px solid rgba(79, 70, 229, .28);
+    }
+
+    .btn-outline:hover {
+      background: #4f46e5;
+      color: #fff;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .15);
+    }
+
+    .btn-zoom {
+      background: #fff;
+      border: 1px solid rgba(79, 70, 229, .22);
+      color: #4f46e5;
+      padding: 6px 12px;
+      font-size: .72rem;
+      font-weight: 600;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all .15s;
+      box-shadow: 0 2px 6px rgba(79, 70, 229, .08);
+    }
+
+    .btn-zoom:hover {
+      background: #4f46e5;
+      color: #fff;
+      border-color: #4f46e5;
+    }
+
+    .section {
+      background: rgba(255, 255, 255, .98);
+      padding: 22px 22px 20px;
+      border-radius: 20px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, .06), 0 12px 40px rgba(79, 70, 229, .07);
+      border: 1px solid rgba(15, 23, 42, .05);
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 800;
+      color: #312e81;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(79, 70, 229, .14);
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+      gap: 12px;
+    }
+
+    .kpi {
+      background: linear-gradient(165deg, rgba(255,255,255,.95) 0%, rgba(238, 242, 255, .55) 100%);
+      padding: 16px 14px;
+      border-radius: 14px;
+      text-align: center;
+      border: 1px solid rgba(79, 70, 229, .12);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+    .kpi:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(79, 70, 229, .1);
+    }
+
+    .kpi-label {
+      font-size: .68rem;
+      color: #64748b;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: .06em;
+    }
+
+    .kpi-value {
+      font-size: 1.35rem;
+      font-family: 'Inter', ui-monospace, monospace;
+      font-weight: 800;
+      color: #4f46e5;
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-value.red {
+      color: #e53e3e;
+    }
+
+    .kpi-value.yellow {
+      color: #c05621;
+    }
+
+    .kpi-value.cyan {
+      color: #4f46e5;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, .85);
+      border-radius: 16px;
+      border: 1px solid rgba(15, 23, 42, .06);
+      box-shadow: 0 2px 12px rgba(15, 23, 42, .04);
+    }
+
+    .tab {
+      padding: 9px 16px;
+      background: rgba(255, 255, 255, .98);
+      border: 1px solid rgba(15, 23, 42, .08);
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: .8rem;
+      font-weight: 600;
+      color: #64748b;
+      transition: all .18s ease;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, .04);
+    }
+
+    .tab:hover {
+      border-color: rgba(79, 70, 229, .25);
+      color: #4338ca;
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, rgba(79, 70, 229, .12), rgba(13, 148, 136, .1));
+      border-color: #4f46e5;
+      color: #3730a3;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, .15);
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    @media(max-width:860px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-box {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      border: 1px solid rgba(15, 23, 42, .08);
+      border-radius: 18px;
+      padding: 18px 18px 14px;
+      position: relative;
+      box-shadow: 0 4px 24px rgba(15, 23, 42, .06), 0 0 0 1px rgba(255,255,255,.8) inset;
+    }
+
+    .chart-box h3 {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      color: #1e293b;
+      font-size: .88rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
+      padding-right: 100px;
+      line-height: 1.35;
+    }
+
+    .chart-sub {
+      font-size: .72rem;
+      color: #64748b;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .chart-toolbar {
+      display: flex;
+      gap: 5px;
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      align-items: center;
+      z-index: 5;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 310px;
+    }
+
+    .chart-wrap-sm {
+      position: relative;
+      height: 230px;
+    }
+
+    .chart-wrap-lg {
+      position: relative;
+      height: 360px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 5px;
+      font-size: .73rem;
+      font-weight: 700;
+      margin-left: 8px;
+    }
+
+    .tag-stable {
+      background: rgba(76, 175, 125, .2);
+      color: #4caf7d;
+    }
+
+    .tag-marginal {
+      background: rgba(237, 137, 54, .2);
+      color: #c05621;
+    }
+
+    .tag-unstable {
+      background: rgba(245, 101, 101, .2);
+      color: #e53e3e;
+    }
+
+    .conclusion-item {
+      background: rgba(255, 255, 255, .95);
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-left: 3px solid #4f46e5;
+      margin-bottom: 8px;
+      line-height: 1.6;
+      font-size: .88rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .05);
+    }
+
+    .conclusion-item.warn {
+      border-left-color: #ed8936;
+    }
+
+    .conclusion-item.danger {
+      border-left-color: #e53e3e;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: .76rem;
+      font-weight: 700;
+    }
+
+    .aoi-dist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .aoi-stat {
+      background: rgba(79, 70, 229, .06);
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .aoi-stat-label {
+      font-size: .7rem;
+      color: #718096;
+      margin-bottom: 3px;
+    }
+
+    .aoi-stat-val {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #0d9488;
+      font-family: monospace;
+    }
+
+    .fft-note {
+      background: rgba(79, 70, 229, .06);
+      border: 1px solid rgba(79, 70, 229, .15);
+      padding: 8px 12px;
+      border-radius: 7px;
+      font-size: .76rem;
+      color: #4f46e5;
+      margin-top: 7px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 80px 24px;
+      font-size: 1.02rem;
+      font-weight: 500;
+      color: #475569;
+      background: rgba(255,255,255,.6);
+      border-radius: 20px;
+      max-width: 560px;
+      margin: 40px auto;
+      border: 1px solid rgba(15, 23, 42, .06);
+    }
+
+    .hint {
+      font-size: .68rem;
+      color: #64748b;
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    .history-banner {
+      background: rgba(79, 70, 229, .1);
+      border: 1px solid rgba(79, 70, 229, .22);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      font-size: .84rem;
+      color: #4a5568;
+      line-height: 1.5;
+    }
+
+    .history-banner a {
+      color: #4f46e5;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .history-banner a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="nav">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="nav-title">📊 Analisis eksperimen</span>
+      <a href="/dashboard" class="btn btn-green">🏠 Beranda</a>
+      <a href="/compare" class="btn btn-purple">⚖️ Bandingkan</a>
+      <a href="/history" class="btn btn-outline">📋 Riwayat</a>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline" id="exportBtn">⬇ CSV</button>
+      <button class="btn btn-purple" id="newExpBtn">＋ New Experiment</button>
+    </div>
+  </div>
+
+  <div id="loadingDiv" class="loading">⏳ Loading experiment data…</div>
+  <div id="contentDiv" style="display:none">
+    <div id="historyBanner" class="history-banner" style="display:none"></div>
+
+    <div class="section">
+      <div class="section-title">🏆 Ringkasan eksperimen</div>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Experiment ID</div>
+          <div class="kpi-value cyan" id="expId" style="font-size:.8rem">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Duration</div>
+          <div class="kpi-value" id="duration">0s</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Vehicles</div>
+          <div class="kpi-value" id="totalVehicles">0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Network</div>
+          <div class="kpi-value cyan" id="networkMode">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Collision</div>
+          <div class="kpi-value" id="collisionStatus">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Stability (global SI)</div>
+          <div class="kpi-value" id="finalStability">—</div>
+          <div id="siPerPlatoon" style="font-size:.62rem;color:#718096;margin-top:4px;line-height:1.35;font-family:monospace">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Mode Switches</div>
+          <div class="kpi-value yellow" id="modeSwitches">0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Avg Spacing Err</div>
+          <div class="kpi-value" id="avgSpacingErr">0 m</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Peak AoI</div>
+          <div class="kpi-value yellow" id="peakAoi">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">PDR (time-avg / last)</div>
+          <div class="kpi-value" id="pdrVal">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <div class="tab active" onclick="showTab('tab-dynamics',this)">🚗 Dinamika kendaraan</div>
+      <div class="tab" onclick="showTab('tab-string',this)">📈 String stability</div>
+      <div class="tab" onclick="showTab('tab-network',this)">📡 Jaringan</div>
+      <div class="tab" onclick="showTab('tab-aoi',this)">⏱ AoI</div>
+      <div class="tab" onclick="showTab('tab-fsm',this)">🔀 FSM &amp; keselamatan</div>
+      <div class="tab" onclick="showTab('tab-conclusions',this)">🧠 Kesimpulan</div>
+    </div>
+
+    <!-- DYNAMICS -->
+    <div class="tab-panel active" id="tab-dynamics">
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3>Kecepatan vs waktu</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('velocityChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap"><canvas id="velocityChart"></canvas></div>
+          <div class="hint">🖱 Scroll to zoom · Drag to pan · Double-click to reset</div>
+        </div>
+        <div class="chart-box">
+          <h3>Error jarak ikut vs waktu</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('spacingChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap"><canvas id="spacingChart"></canvas></div>
+          <div class="chart-sub">Target: &lt;0.5m excellent · &lt;2m acceptable (GCDC 2011)</div>
+        </div>
+        <div class="chart-box">
+          <h3 id="accelChartHeading">Percepatan vs waktu — pengikut pertama: desired vs actual</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('accelChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap"><canvas id="accelChart"></canvas></div>
+          <div class="chart-sub">Dashed = a_desired · Solid = a_actual (τ_act actuation lag)</div>
+        </div>
+        <div class="chart-box">
+          <h3>Celah antar-kendaraan vs waktu</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('gapChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap"><canvas id="gapChart"></canvas></div>
+          <div class="chart-sub">Gap = predecessor pos − follower pos − length (field <code>length</code> in log, default 5m)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STRING STABILITY -->
+    <div class="tab-panel" id="tab-string">
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3>String Stability Index vs Time <span class="tag tag-stable" id="ssTag">COMPUTING…</span></h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('stabilityChart')">⟳ Reset
+              Zoom</button></div>
+          <div class="chart-wrap"><canvas id="stabilityChart"></canvas></div>
+          <div class="chart-sub">Curve = min(SI) across platoons per timestep. SI &gt; 0.8 STABLE · &lt;0.5 UNSTABLE (Swaroop &amp; Hedrick 1996)
+          </div>
+        </div>
+        <div class="chart-box">
+          <h3>String Stability Index per Platoon</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('siPlatoonChart')">⟳ Reset Zoom</button></div>
+          <div class="chart-wrap"><canvas id="siPlatoonChart"></canvas></div>
+          <div class="chart-sub">Kurva terpisah per P0, P1, … dari field <code>stability_by_platoon</code>; garis putus = indeks global min(SI). Hanya muncul jika log berisi data per-platoon.</div>
+        </div>
+        <div class="chart-box">
+          <h3>Amplitude Ratio AR_i = |Δx_i| / |Δx_{i−1}|</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('arChart')">⟳ Reset Zoom</button></div>
+          <div class="chart-wrap"><canvas id="arChart"></canvas></div>
+          <div class="chart-sub">AR &lt; 1 for all followers = string stable (Ploeg 2011)</div>
+        </div>
+        <div class="chart-box">
+          <h3>FFT String Stability |AR(f)|</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('fftChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap"><canvas id="fftChart"></canvas></div>
+          <div class="fft-note">🔬 String stable ⟺ |AR(f)| ≤ 1 ∀f ≥ 0 (Swaroop &amp; Hedrick 1996). G-01 FFT validation.
+          </div>
+        </div>
+        <div class="chart-box">
+          <h3>RMS Spacing Error per Vehicle</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('waterfallChart')">⟳ Reset
+              Zoom</button></div>
+          <div class="chart-wrap-sm"><canvas id="waterfallChart"></canvas></div>
+          <div class="chart-sub">Rising RMS across vehicles → string instability indicator</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NETWORK -->
+    <div class="tab-panel" id="tab-network">
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3>E2E Latency per V2V Link (G-10)</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('latencyChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap"><canvas id="latencyChart"></canvas></div>
+          <div class="chart-sub">URLLC target &lt;20ms. Network + ECDSA security delay (3GPP TR 38.885).</div>
+        </div>
+        <div class="chart-box">
+          <h3>ECDSA mean security delay vs time (from network metrics)</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('secDelayChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap"><canvas id="secDelayChart"></canvas></div>
+          <div class="chart-sub">Same cumulative mean as simulation Network tab (get_metrics). Not a per-packet histogram.</div>
+        </div>
+        <div class="chart-box">
+          <h3>Packet Delivery Ratio (PDR) vs Time</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('pdrChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap"><canvas id="pdrChart"></canvas></div>
+          <div class="chart-sub">3GPP TR 36.885: PDR &gt;95% required for V2X safety applications.</div>
+        </div>
+        <div class="chart-box">
+          <h3>Delay Breakdown: Network vs Security</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('delayBreakChart')">⟳ Reset
+              Zoom</button></div>
+          <div class="chart-wrap"><canvas id="delayBreakChart"></canvas></div>
+          <div class="chart-sub">G-02: Total = propagation + processing + queuing + ECDSA security.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AOI -->
+    <div class="tab-panel" id="tab-aoi">
+      <div class="aoi-dist-grid" id="aoiStats"></div>
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3>Age of Information per Vehicle vs Time</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('aoiChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap-lg"><canvas id="aoiChart"></canvas></div>
+          <div class="chart-sub">FSM thresholds: 100ms CACC→DEG · 500ms DEG→ACC</div>
+        </div>
+        <div class="chart-box">
+          <h3>AoI Histogram — Empirical vs normal overlay (G-05 stats; M/D/1 peak in KPI)</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('aoiHistChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap-lg"><canvas id="aoiHistChart"></canvas></div>
+          <div class="chart-sub">M/D/1 (Kaul 2012): Peak AoI = 1/(2λ) + S + ρ/(λ(1−ρ)). λ=10Hz, S=100ms.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FSM -->
+    <div class="tab-panel" id="tab-fsm">
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3>FSM State per Vehicle vs Time</h3>
+          <div class="chart-toolbar"><button class="btn-zoom" onclick="resetZoom('fsmChart')">⟳ Reset Zoom</button>
+          </div>
+          <div class="chart-wrap"><canvas id="fsmChart"></canvas></div>
+          <div class="chart-sub">4=CACC · 3=DEGRADED · 2=ACC · 1=EMERGENCY — AoI-driven transitions</div>
+        </div>
+        <div class="chart-box">
+          <h3>Mode Switch Timeline</h3>
+          <div id="modeSwitchLog" style="max-height:300px;overflow-y:auto;padding:2px 4px;margin-top:4px"></div>
+        </div>
+      </div>
+      <div id="collisionReport" style="display:none;margin-top:14px">
+        <div class="section-title" style="color:#f56565">🚨 Collision Report</div>
+        <div id="collisionDetails"></div>
+      </div>
+    </div>
+
+    <!-- CONCLUSIONS -->
+    <div class="tab-panel" id="tab-conclusions">
+      <div class="section">
+        <div class="section-title">🧠 Academic Conclusions &amp; Recommendations</div>
+        <div id="conclusionsList"></div>
+        <div class="badge-row" id="configBadges"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ─── Chart theme: light UI, tebal & kontras untuk layar edukasi ───
+    Chart.defaults.color = '#475569';
+    Chart.defaults.font.family = "'Inter', 'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.borderColor = 'rgba(15, 23, 42, .08)';
+
+    const MATLAB_COLORS = [
+      '#2563eb', '#ca8a04', '#dc2626', '#059669', '#7c3aed',
+      '#ea580c', '#0891b2', '#db2777', '#4f46e5', '#0d9488'
+    ];
+
+    const chartReg = {};
+
+    function showTab(id, el) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      el.classList.add('active');
+    }
+
+    function resetZoom(id) {
+      if (chartReg[id]) chartReg[id].resetZoom();
+    }
+
+    // ─── AXIS STYLE (tema terang) ─────────────────────────────
+    function axisStyle(title) {
+      return {
+        display: true,
+        title: { display: !!title, text: title, color: '#64748b', font: { size: 11, weight: '700', family: "'Inter',sans-serif" } },
+        grid: { color: 'rgba(15, 23, 42, .06)', lineWidth: 1 },
+        ticks: { color: '#64748b', maxTicksLimit: 12, font: { size: 11, family: "'Inter',sans-serif" } },
+        border: { display: true, color: 'rgba(15, 23, 42, .12)' }
+      };
+    }
+
+    function zoomOpts() {
+      return {
+        zoom: { wheel: { enabled: true, speed: 0.07 }, pinch: { enabled: true }, mode: 'xy', onZoomComplete: null },
+        pan: { enabled: true, mode: 'xy' }
+      };
+    }
+
+    function legendOpts() {
+      return {
+        position: 'top',
+        align: 'start',
+        labels: {
+          color: '#334155', font: { size: 11, weight: '600', family: "'Inter',sans-serif" },
+          boxWidth: 36, boxHeight: 4, padding: 12, usePointStyle: true, pointStyle: 'line'
+        }
+      };
+    }
+
+    function tooltipOpts() {
+      return {
+        backgroundColor: 'rgba(255,255,255,.98)',
+        titleColor: '#0f172a', bodyColor: '#475569',
+        borderColor: 'rgba(79, 70, 229, .2)', borderWidth: 1, padding: 12, cornerRadius: 10,
+        displayColors: true, boxPadding: 6,
+        boxWidth: 10, boxHeight: 10,
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${typeof ctx.raw === 'number' ? ctx.raw.toFixed(4) : ctx.raw}` }
+      };
+    }
+
+    /** Rentang Y dari data + padding — sumbu tidak “melebar” sia-sia */
+    function dataYRange(seriesArrays, padFrac = 0.14) {
+      let lo = Infinity, hi = -Infinity;
+      for (const arr of seriesArrays) {
+        if (!arr) continue;
+        for (const v of arr) {
+          if (v == null || typeof v !== 'number' || Number.isNaN(v)) continue;
+          lo = Math.min(lo, v); hi = Math.max(hi, v);
+        }
+      }
+      if (!isFinite(lo) || !isFinite(hi)) return null;
+      const span = hi - lo;
+      if (span < 1e-9) {
+        const mid = lo;
+        const band = Math.max(Math.abs(mid) * 0.004, 0.06);
+        return { suggestedMin: mid - band, suggestedMax: mid + band };
+      }
+      const pad = Math.max(span * padFrac, span * 0.05);
+      return { suggestedMin: lo - pad, suggestedMax: hi + pad };
+    }
+
+    function mkLine(id, datasets, labels, yLabel = '', xLabel = 'Time (s)', yMin = undefined, yMax = undefined, extraAnnotations = {}, yScaleHints = null) {
+      const ctx = document.getElementById(id); if (!ctx) return null;
+      if (chartReg[id]) chartReg[id].destroy();
+      const scaleY = {
+        ...axisStyle(yLabel),
+        ...(yMin !== undefined ? { min: yMin } : {}),
+        ...(yMax !== undefined ? { max: yMax } : {}),
+        ...(yScaleHints && yScaleHints.suggestedMin != null ? { suggestedMin: yScaleHints.suggestedMin } : {}),
+        ...(yScaleHints && yScaleHints.suggestedMax != null ? { suggestedMax: yScaleHints.suggestedMax } : {})
+      };
+      const ch = new Chart(ctx, {
+        type: 'line', data: { labels, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+          interaction: { mode: 'index', intersect: false },
+          devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+          plugins: {
+            legend: legendOpts(),
+            tooltip: tooltipOpts(),
+            zoom: zoomOpts(),
+            annotation: { annotations: extraAnnotations }
+          },
+          scales: { x: axisStyle(xLabel), y: scaleY },
+          elements: { point: { radius: 0, hoverRadius: 6, hitRadius: 12 }, line: { tension: 0.22, borderWidth: 2.75 } }
+        }
+      });
+      chartReg[id] = ch; return ch;
+    }
+
+    function mkBar(id, datasets, labels, yLabel = '', xLabel = '', yMin = 0) {
+      const ctx = document.getElementById(id); if (!ctx) return null;
+      if (chartReg[id]) chartReg[id].destroy();
+      const ch = new Chart(ctx, {
+        type: 'bar', data: { labels, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+          devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+          plugins: { legend: legendOpts(), zoom: zoomOpts(), tooltip: tooltipOpts() },
+          scales: { x: axisStyle(xLabel), y: { ...axisStyle(yLabel), min: yMin } }
+        }
+      });
+      chartReg[id] = ch; return ch;
+    }
+
+    // ─── DATA HELPERS ─────────────────────────────────────────
+    function decimateLog(log, maxPts = 600) {
+      if (log.length <= maxPts) return log;
+      const step = Math.ceil(log.length / maxPts);
+      const out = [];
+      for (let i = 0; i < log.length; i += step) out.push(log[i]);
+      if (out[out.length - 1] !== log[log.length - 1]) out.push(log[log.length - 1]);
+      return out;
+    }
+
+    // ─── FFT ─────────────────────────────────────────────────
+    function fftMag(signal) {
+      const N = Math.pow(2, Math.floor(Math.log2(signal.length)));
+      const x = signal.slice(0, N);
+      function brev(n, b) { let r = 0; for (let i = 0; i < b; i++) { r = (r << 1) | (n & 1); n >>= 1; } return r; }
+      const bits = Math.log2(N);
+      const re = new Float64Array(N), im = new Float64Array(N);
+      for (let i = 0; i < N; i++) re[brev(i, bits)] = x[i];
+      for (let len = 2; len <= N; len <<= 1) {
+        const ang = -2 * Math.PI / len, wRe = Math.cos(ang), wIm = Math.sin(ang);
+        for (let i = 0; i < N; i += len) {
+          let cRe = 1, cIm = 0;
+          for (let j = 0; j < len / 2; j++) {
+            const uRe = re[i + j], uIm = im[i + j];
+            const vRe = re[i + j + len / 2] * cRe - im[i + j + len / 2] * cIm;
+            const vIm = re[i + j + len / 2] * cIm + im[i + j + len / 2] * cRe;
+            re[i + j] = uRe + vRe; im[i + j] = uIm + vIm;
+            re[i + j + len / 2] = uRe - vRe; im[i + j + len / 2] = uIm - vIm;
+            const nr = cRe * wRe - cIm * wIm; cIm = cRe * wIm + cIm * wRe; cRe = nr;
+          }
+        }
+      }
+      const mag = new Float64Array(N / 2);
+      for (let i = 0; i < N / 2; i++) mag[i] = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
+      return mag;
+    }
+
+    function computeFFT(dataLog, fids, dt = 0.01) {
+      if (fids.length < 2) return null;
+      const errs = {};
+      fids.forEach(id => { errs[id] = dataLog.map(d => d.vehicles.find(v => v.id === id)?.spacing_error || 0); });
+      const N = Math.pow(2, Math.floor(Math.log2(dataLog.length)));
+      const freqStep = 1 / (N * dt);
+      const freqs = Array.from({ length: N / 2 }, (_, i) => i * freqStep);
+      const curves = {};
+      for (let i = 1; i < fids.length; i++) {
+        const id = fids[i], idP = fids[i - 1];
+        const mi = fftMag(errs[id]), mp = fftMag(errs[idP]);
+        curves[id] = Array.from(mi).map((m, k) => mp[k] > 0.001 ? m / mp[k] : 0);
+      }
+      return { freqs, curves };
+    }
+
+    // ─── MAIN ────────────────────────────────────────────────
+    let expData = null;
+
+    async function bootAnalysis() {
+      const loadingEl = document.getElementById('loadingDiv');
+      const contentEl = document.getElementById('contentDiv');
+      const bannerEl = document.getElementById('historyBanner');
+      const params = new URLSearchParams(window.location.search);
+      const eid = (params.get('experiment_id') || params.get('id') || '').trim();
+
+      if (eid) {
+        const r = await fetch('/api/experiment_json/' + encodeURIComponent(eid));
+        if (!r.ok) {
+          let msg = 'Gagal memuat log';
+          try {
+            const err = await r.json();
+            if (err.error) msg = err.error;
+          } catch (_) { /* ignore */ }
+          loadingEl.innerHTML = '<p style="color:#f56565;max-width:520px;margin:0 auto">' + msg +
+            '</p><p style="margin-top:14px"><a href="/history" class="btn btn-outline">📋 History</a> &nbsp; <a href="/analysis" class="btn btn-purple">Run terakhir</a> &nbsp; <a href="/configure" class="btn btn-green">Sim baru</a></p>';
+          return;
+        }
+        expData = await r.json();
+        bannerEl.style.display = 'block';
+        bannerEl.innerHTML = 'Membuka <strong>riwayat tersimpan</strong> · ID: <code style="background:rgba(0,0,0,.06);padding:2px 8px;border-radius:6px">' + eid + '</code> · ' +
+          '<a href="/analysis">Analisis run terakhir (sesi ini)</a> · <a href="/history">Semua history</a>';
+      } else {
+        const r = await fetch('/api/get_last_experiment');
+        if (!r.ok) {
+          loadingEl.innerHTML = '<p style="color:#f56565">Belum ada data run terakhir di sesi ini.</p>' +
+            '<p style="margin-top:12px"><a href="/configure" class="btn btn-purple">Jalankan simulasi</a> &nbsp; <a href="/history" class="btn btn-outline">Buka dari History</a></p>';
+          return;
+        }
+        expData = await r.json();
+        bannerEl.style.display = 'none';
+        bannerEl.innerHTML = '';
+      }
+
+      loadingEl.style.display = 'none';
+      contentEl.style.display = 'block';
+      renderAll(expData);
+    }
+
+    window.addEventListener('load', () => {
+      bootAnalysis().catch(e => {
+        document.getElementById('loadingDiv').innerHTML = '<p style="color:#f56565">Error: ' + e.message + '</p>';
+      });
+    });
+
+    function renderAll(data) {
+      renderKPIs(data);
+      const dec = decimateLog(data.data, 700);
+      renderDynamics(dec);
+      renderStringStability(dec, data.data);
+      renderNetwork(dec);
+      renderAoI(dec, data.aoi_distribution, data.data);
+      renderFSM(dec, data.mode_switch_log, data.collision_log);
+      renderConclusions(data);
+    }
+
+    // ── KPIs ─────────────────────────────────────────────────
+    function renderKPIs(data) {
+      document.getElementById('expId').textContent = data.experiment_id;
+      const dur = data.data.length ? data.data[data.data.length - 1].time : 0;
+      document.getElementById('duration').textContent = dur.toFixed(1) + 's';
+      const nVeh = data.data.length ? data.data[data.data.length - 1].vehicles.length : 0;
+      document.getElementById('totalVehicles').textContent = String(nVeh || (data.config.num_vehicles || 0) * (data.config.num_platoons || 1));
+      document.getElementById('networkMode').textContent = data.config.network_slicing || 'URLLC';
+      document.getElementById('modeSwitches').textContent = (data.mode_switch_log || []).length;
+      const colEl = document.getElementById('collisionStatus');
+      colEl.textContent = data.collision_occurred ? 'YES ⚠' : 'NO ✓';
+      colEl.className = 'kpi-value ' + (data.collision_occurred ? 'red' : '');
+      const lastEntry = data.data.length ? data.data[data.data.length - 1] : null;
+      const siStr = lastEntry ? lastEntry.stability_status : '?';
+      const ssEl = document.getElementById('finalStability');
+      ssEl.textContent = siStr;
+      ssEl.className = 'kpi-value ' + (siStr === 'STABLE' ? '' : siStr === 'MARGINAL' ? 'yellow' : 'red');
+      const sbpEl = document.getElementById('siPerPlatoon');
+      const sbp = lastEntry && lastEntry.stability_by_platoon;
+      if (sbpEl) {
+        if (sbp && typeof sbp === 'object' && Object.keys(sbp).length) {
+          sbpEl.textContent = Object.keys(sbp).sort((a, b) => Number(a) - Number(b))
+            .map(pid => {
+              const o = sbp[pid];
+              return `P${pid}: ${o.si} ${(o.status || '').slice(0, 3)}`;
+            }).join(' · ');
+        } else {
+          sbpEl.textContent = 'Per-platoon SI: tidak ada di log (jalankan sim baru)';
+        }
+      }
+      let errs = [], aois = [];
+      data.data.forEach(d => d.vehicles.filter(v => !v.is_leader).forEach(v => {
+        if (v.spacing_error != null) errs.push(Math.abs(v.spacing_error));
+        if (v.aoi_ms != null) aois.push(v.aoi_ms);
+      }));
+      const avgErr = errs.length ? errs.reduce((a, b) => a + b, 0) / errs.length : 0;
+      document.getElementById('avgSpacingErr').textContent = avgErr.toFixed(3) + ' m';
+      const peakAoi = aois.length ? Math.max(...aois) : 0;
+      const peakEl = document.getElementById('peakAoi');
+      peakEl.textContent = peakAoi.toFixed(0) + ' ms'; peakEl.className = 'kpi-value ' + (peakAoi > 500 ? 'red' : peakAoi > 100 ? 'yellow' : '');
+      const lastNet = lastEntry ? lastEntry.network : null;
+      const pdrs = (data.data || []).map(d => d.network && d.network.pdr).filter(x => x != null && !Number.isNaN(x));
+      const avgPdr = pdrs.length ? pdrs.reduce((a, b) => a + b, 0) / pdrs.length : null;
+      const pdrTxt = (avgPdr != null && lastNet)
+        ? avgPdr.toFixed(1) + '% / ' + lastNet.pdr.toFixed(1) + '%'
+        : (lastNet ? '— / ' + lastNet.pdr.toFixed(1) + '%' : '—');
+      document.getElementById('pdrVal').textContent = pdrTxt;
+    }
+
+    // ── DYNAMICS ─────────────────────────────────────────────
+    function renderDynamics(log) {
+      if (!log.length) return;
+      const times = log.map(d => d.time.toFixed(2));
+      const ids = [...new Set(log[0].vehicles.map(v => v.id))];
+      const fids = ids.filter(id => log[0].vehicles.find(v => v.id === id && !v.is_leader));
+
+      const velSeries = ids.map(id => log.map(d => d.vehicles.find(v => v.id === id)?.velocity_kmh ?? null));
+      const velYHint = dataYRange(velSeries, 0.12);
+      mkLine('velocityChart', ids.map((id, i) => ({
+        label: 'V' + id, borderColor: MATLAB_COLORS[i % MATLAB_COLORS.length], borderWidth: 2.85,
+        data: velSeries[i]
+      })), times, 'Kecepatan (km/h)', 'Waktu (s)', undefined, undefined, {}, velYHint);
+
+      const spSeries = fids.map(id => log.map(d => d.vehicles.find(v => v.id === id)?.spacing_error ?? null));
+      let spYHint = dataYRange(spSeries, 0.2);
+      if (spYHint && (spYHint.suggestedMax - spYHint.suggestedMin) < 1.0) {
+        spYHint = {
+          suggestedMin: Math.min(spYHint.suggestedMin, -0.65),
+          suggestedMax: Math.max(spYHint.suggestedMax, 0.65)
+        };
+      }
+      mkLine('spacingChart', fids.map((id, i) => ({
+        label: 'V' + id, borderColor: MATLAB_COLORS[(i + 1) % MATLAB_COLORS.length], borderWidth: 2.85,
+        data: spSeries[i]
+      })), times, 'Error jarak (m)', 'Waktu (s)', undefined, undefined, {
+        line05p: { type: 'line', yMin: .5, yMax: .5, borderColor: 'rgba(5,150,105,.55)', borderDash: [6, 4], borderWidth: 2 },
+        line05n: { type: 'line', yMin: -.5, yMax: -.5, borderColor: 'rgba(5,150,105,.55)', borderDash: [6, 4], borderWidth: 2 },
+        line2p: { type: 'line', yMin: 2, yMax: 2, borderColor: 'rgba(202,138,4,.65)', borderDash: [6, 4], borderWidth: 2 },
+        line2n: { type: 'line', yMin: -2, yMax: -2, borderColor: 'rgba(202,138,4,.65)', borderDash: [6, 4], borderWidth: 2 }
+      }, spYHint);
+
+      if (fids.length) {
+        const fid = fids[0];
+        const ah = document.getElementById('accelChartHeading');
+        if (ah) ah.textContent = 'Percepatan vs waktu — V' + fid + ': desired vs actual';
+        const ad = log.map(d => d.vehicles.find(v => v.id === fid)?.a_desired ?? null);
+        const aa = log.map(d => d.vehicles.find(v => v.id === fid)?.a_actual ?? null);
+        const accY = dataYRange([ad, aa], 0.15);
+        mkLine('accelChart', [
+          {
+            label: 'V' + fid + ' a_desired', borderColor: '#ca8a04', borderDash: [8, 5], borderWidth: 2.4,
+            data: ad
+          },
+          {
+            label: 'V' + fid + ' a_actual', borderColor: '#2563eb', borderWidth: 2.85,
+            data: aa
+          }
+        ], times, 'Percepatan (m/s²)', 'Waktu (s)', undefined, undefined, {}, accY);
+      }
+
+      mkLine('gapChart', fids.map((id, i) => ({
+        label: 'V' + id + ' gap', borderColor: MATLAB_COLORS[(i + 1) % MATLAB_COLORS.length], borderWidth: 2.85,
+        data: log.map(d => {
+          const v = d.vehicles.find(v => v.id === id); if (!v) return null;
+          const pl = d.vehicles.filter(vv => vv.platoon_id === v.platoon_id).sort((a, b) => b.position - a.position);
+          const idx = pl.findIndex(vv => vv.id === id);
+          if (idx <= 0) return null;
+          const pred = pl[idx - 1];
+          const len = typeof v.length === 'number' ? v.length : 5;
+          return Math.max(0, pred.position - v.position - len);
+        })
+      })), times, 'Celah (m)', 'Waktu (s)', 0);
+    }
+
+    // ── STRING STABILITY ──────────────────────────────────────
+    function inferSampleDt(log) {
+      if (!log || log.length < 2) return 0.01;
+      const n = Math.min(log.length, 100);
+      let s = 0;
+      for (let i = 1; i < n; i++) s += log[i].time - log[i - 1].time;
+      return (s / (n - 1)) || 0.01;
+    }
+
+    function renderStringStability(log, fullLog) {
+      if (!log.length) return;
+      const sampleDt = inferSampleDt(fullLog);
+      const times = log.map(d => d.time.toFixed(2));
+      const fids = [...new Set(log[0].vehicles.filter(v => !v.is_leader).map(v => v.id))];
+
+      mkLine('stabilityChart', [{
+        label: 'String Stability Index', borderColor: '#059669',
+        backgroundColor: 'rgba(5,150,105,.08)', fill: true, borderWidth: 2.75,
+        data: log.map(d => d.stability_index ?? null)
+      }], times, 'SI [0–1]', 'Waktu (s)', 0, 1, {
+        s08: { type: 'line', yMin: .8, yMax: .8, borderColor: 'rgba(5,150,105,.55)', borderDash: [6, 4], borderWidth: 2 },
+        s05: { type: 'line', yMin: .5, yMax: .5, borderColor: 'rgba(202,138,4,.55)', borderDash: [6, 4], borderWidth: 2 }
+      });
+
+      const pidSet = new Set();
+      fullLog.forEach(d => {
+        const sbp = d.stability_by_platoon;
+        if (sbp && typeof sbp === 'object') Object.keys(sbp).forEach(k => pidSet.add(k));
+      });
+      const pidsSorted = [...pidSet].sort((a, b) => Number(a) - Number(b));
+      if (pidsSorted.length > 0) {
+        mkLine('siPlatoonChart', [
+          ...pidsSorted.map((pid, i) => ({
+            label: 'P' + pid + ' SI',
+            borderColor: MATLAB_COLORS[i % MATLAB_COLORS.length],
+            borderWidth: 2.75,
+            data: log.map(d => (d.stability_by_platoon && d.stability_by_platoon[pid]) ? d.stability_by_platoon[pid].si : null)
+          })),
+          {
+            label: 'Global min(SI)',
+            borderColor: 'rgba(5,150,105,.9)',
+            borderDash: [10, 5],
+            borderWidth: 2.5,
+            pointRadius: 0,
+            data: log.map(d => d.stability_index ?? null)
+          }
+        ], times, 'SI [0–1]', 'Waktu (s)', 0, 1, {
+          s08: { type: 'line', yMin: .8, yMax: .8, borderColor: 'rgba(5,150,105,.45)', borderDash: [6, 4], borderWidth: 2 },
+          s05: { type: 'line', yMin: .5, yMax: .5, borderColor: 'rgba(202,138,4,.45)', borderDash: [6, 4], borderWidth: 2 }
+        });
+      } else if (chartReg['siPlatoonChart']) {
+        chartReg['siPlatoonChart'].destroy();
+        chartReg['siPlatoonChart'] = null;
+      }
+
+      mkLine('arChart', [
+        ...fids.map((id, i) => ({
+          label: 'AR V' + id, borderColor: MATLAB_COLORS[(i + 1) % MATLAB_COLORS.length], borderWidth: 2.75,
+          data: log.map(d => d.amplitude_ratios?.[id] ?? null)
+        })),
+        {
+          label: 'AR = 1', borderColor: 'rgba(220,38,38,.75)', borderDash: [8, 5], borderWidth: 2.25,
+          data: log.map(() => 1)
+        }
+      ], times, 'Amplitude ratio', 'Waktu (s)', 0);
+
+      // FFT (dt must match simulation step; infer from log timestamps)
+      const fft = computeFFT(fullLog, fids, sampleDt);
+      if (fft && fft.freqs.length > 2) {
+        const maxHz = 2.0, fStep = fft.freqs[1] || 0.001;
+        const nBins = Math.min(Math.floor(maxHz / fStep), fft.freqs.length, 200);
+        const fl = fft.freqs.slice(0, nBins).map(f => f.toFixed(3));
+        mkLine('fftChart', [
+          ...fids.slice(1).map((id, i) => ({
+            label: '|AR(f)| V' + id, borderColor: MATLAB_COLORS[(i + 1) % MATLAB_COLORS.length], borderWidth: 2.75,
+            data: (fft.curves[id] || []).slice(0, nBins)
+          })),
+          { label: 'AR = 1 limit', borderColor: 'rgba(220,38,38,.75)', borderDash: [8, 5], borderWidth: 2.25, data: fl.map(() => 1) }
+        ], fl, '|AR(f)|', 'Frekuensi (Hz)', 0);
+        const allAR = fids.slice(1).flatMap(id => (fft.curves[id] || []).slice(0, nBins));
+        const maxAR = allAR.length ? Math.max(...allAR) : 0;
+        const tag = document.getElementById('ssTag');
+        if (maxAR < 1) { tag.textContent = '✓ FREQ-STABLE'; tag.className = 'tag tag-stable'; }
+        else if (maxAR < 1.2) { tag.textContent = '⚠ MARGINAL'; tag.className = 'tag tag-marginal'; }
+        else { tag.textContent = '✗ UNSTABLE'; tag.className = 'tag tag-unstable'; }
+      }
+
+      const rms = fids.map(id => {
+        const e = fullLog.map(d => d.vehicles.find(v => v.id === id)?.spacing_error || 0);
+        return Math.sqrt(e.reduce((a, b) => a + b * b, 0) / e.length);
+      });
+      mkBar('waterfallChart', [{
+        label: 'RMS error jarak (m)', data: rms, borderRadius: 8, borderWidth: 0,
+        backgroundColor: rms.map(r => r < 0.5 ? 'rgba(5,150,105,.85)' : r < 2 ? 'rgba(202,138,4,.85)' : 'rgba(220,38,38,.85)')
+      }], fids.map(id => 'V' + id), 'RMS (m)', 'Kendaraan', 0);
+    }
+
+    // ── NETWORK ───────────────────────────────────────────────
+    function renderNetwork(log) {
+      if (!log.length) return;
+      const times = log.map(d => d.time.toFixed(2));
+      const linkIds = Object.keys(log.find(d => Object.keys(d.network.link_latency || {}).length > 0)?.network.link_latency || {});
+
+      if (linkIds.length) {
+        mkLine('latencyChart', linkIds.map((lid, i) => ({
+          label: 'V' + lid + ' link', borderColor: MATLAB_COLORS[i % MATLAB_COLORS.length], borderWidth: 2.65,
+          data: log.map(d => d.network.link_latency?.[lid] ?? null)
+        })), times, 'Latency (ms)', 'Waktu (s)', 0, undefined, {
+          urllc: { type: 'line', yMin: 20, yMax: 20, borderColor: 'rgba(220,38,38,.55)', borderDash: [6, 4], borderWidth: 2 }
+        });
+      } else {
+        mkLine('latencyChart', [{
+          label: 'Avg E2E Latency', borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,.1)',
+          fill: true, borderWidth: 2.75, data: log.map(d => d.network.avg_delay ?? null)
+        }], times, 'Latency (ms)', 'Waktu (s)', 0);
+      }
+
+      mkLine('secDelayChart', [{
+        label: 'Mean ECDSA delay (ms)',
+        borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,.12)', fill: true,
+        borderWidth: 2.75, data: log.map(d => d.network.security_delay_ms ?? null)
+      }], times, 'Delay (ms)', 'Waktu (s)', 0);
+
+      mkLine('pdrChart', [
+        {
+          label: 'PDR (%)', borderColor: '#059669', backgroundColor: 'rgba(5,150,105,.1)', fill: true, borderWidth: 2.75,
+          data: log.map(d => d.network.pdr ?? null)
+        },
+        {
+          label: '95% Target', borderColor: 'rgba(220,38,38,.7)', borderDash: [8, 5], borderWidth: 2.25,
+          data: log.map(() => 95)
+        }
+      ], times, 'PDR (%)', 'Waktu (s)', 0, 105);
+
+      mkLine('delayBreakChart', [
+        {
+          label: 'Network', borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.1)', fill: true, borderWidth: 2.75,
+          data: log.map(d => d.network.delay_components?.network ?? d.network.avg_delay ?? null)
+        },
+        {
+          label: 'Security (ECDSA)', borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,.1)', fill: true, borderWidth: 2.75,
+          data: log.map(d => d.network.delay_components?.security ?? d.network.security_delay_ms ?? 3)
+        }
+      ], times, 'Delay (ms)', 'Waktu (s)', 0);
+    }
+
+    // ── AOI ───────────────────────────────────────────────────
+    function renderAoI(log, aoiDist, fullLog) {
+      if (!log.length) return;
+      const times = log.map(d => d.time.toFixed(2));
+      const fids = [...new Set(log[0].vehicles.filter(v => !v.is_leader).map(v => v.id))];
+
+      mkLine('aoiChart', [
+        ...fids.map((id, i) => ({
+          label: 'V' + id + ' AoI', borderColor: MATLAB_COLORS[(i + 1) % MATLAB_COLORS.length], borderWidth: 2.65,
+          data: log.map(d => d.vehicles.find(v => v.id === id)?.aoi_ms ?? null)
+        })),
+        { label: '100ms threshold', borderColor: 'rgba(202,138,4,.8)', borderDash: [7, 5], borderWidth: 2.25, data: log.map(() => 100) },
+        { label: '500ms threshold', borderColor: 'rgba(220,38,38,.8)', borderDash: [8, 5], borderWidth: 2.25, data: log.map(() => 500) }
+      ], times, 'AoI (ms)', 'Waktu (s)', 0);
+
+      if (aoiDist?.mean_ms) {
+        const d = aoiDist;
+        document.getElementById('aoiStats').innerHTML =
+          `<div class="aoi-stat"><div class="aoi-stat-label">Mean AoI</div><div class="aoi-stat-val">${d.mean_ms} ms</div></div>
+       <div class="aoi-stat"><div class="aoi-stat-label">Std Dev</div><div class="aoi-stat-val">${d.std_ms} ms</div></div>
+       <div class="aoi-stat"><div class="aoi-stat-label">95th %ile</div><div class="aoi-stat-val">${d.p95_ms} ms</div></div>
+       <div class="aoi-stat"><div class="aoi-stat-label">Empirical Peak</div><div class="aoi-stat-val">${d.peak_ms} ms</div></div>
+       <div class="aoi-stat"><div class="aoi-stat-label">M/D/1 Peak</div><div class="aoi-stat-val">${d.theoretical_peak_ms} ms</div></div>
+       <div class="aoi-stat"><div class="aoi-stat-label">Samples</div><div class="aoi-stat-val">${d.n_samples}</div></div>`;
+        const allAoI = [];
+        (fullLog || log).forEach(dd => dd.vehicles.filter(v => !v.is_leader).forEach(v => { if (v.aoi_ms != null) allAoI.push(v.aoi_ms); }));
+        const mu = d.mean_ms, sig = Math.max(d.std_ms || 20, 1);
+        const binW = Math.max(5, Math.ceil((mu + 3 * sig) / 22));
+        const nBins = Math.min(25, Math.ceil((mu + 4 * sig) / binW));
+        const edges = Array.from({ length: nBins }, (_, i) => i * binW);
+        const counts = new Array(nBins).fill(0);
+        allAoI.forEach(v => { const bi = Math.floor(v / binW); if (bi < nBins) counts[bi]++; });
+        const total = allAoI.length || 1;
+        const norm = counts.map(c => c / total * 100);
+        const theory = edges.map(b => { const x = b + binW / 2; return Math.exp(-0.5 * ((x - mu) / sig) ** 2) / (sig * Math.sqrt(2 * Math.PI)) * binW * 100; });
+        const ctx = document.getElementById('aoiHistChart'); if (!ctx) return;
+        if (chartReg['aoiHistChart']) chartReg['aoiHistChart'].destroy();
+        chartReg['aoiHistChart'] = new Chart(ctx, {
+          data: {
+            labels: edges.map(e => e + '-' + (e + binW)), datasets: [
+              { type: 'bar', label: 'Empiris', data: norm, backgroundColor: 'rgba(79,70,229,.35)', borderColor: 'rgba(79,70,229,.85)', borderWidth: 1, borderRadius: 6, order: 2 },
+              { type: 'line', label: 'Normal (μ,σ dari run)', data: theory, borderColor: '#ca8a04', backgroundColor: 'transparent', borderWidth: 3, pointRadius: 0, tension: 0.4, order: 1 }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+            devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+            plugins: { legend: legendOpts(), zoom: zoomOpts(), tooltip: tooltipOpts() },
+            scales: { x: { ...axisStyle('AoI (ms)') }, y: { ...axisStyle('Frekuensi (%)'), min: 0 } }
+          }
+        });
+      }
+    }
+
+    // ── FSM ───────────────────────────────────────────────────
+    function renderFSM(log, switchLog, colLog) {
+      if (!log.length) return;
+      const times = log.map(d => d.time.toFixed(2));
+      const fids = [...new Set(log[0].vehicles.filter(v => !v.is_leader).map(v => v.id))];
+      const stMap = {
+        'CACC': 4, 'DEGRADED': 3, 'ACC': 2, 'EMERGENCY': 1, 'LEADER': 5,
+        'TRANSFER': 4, 'DEPARTING': 3, 'IN_TRANSIT': 2
+      };
+      const ctx = document.getElementById('fsmChart');
+      if (ctx) {
+        if (chartReg['fsmChart']) chartReg['fsmChart'].destroy();
+        chartReg['fsmChart'] = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: times, datasets: fids.map((id, i) => ({
+              label: 'V' + id, borderColor: MATLAB_COLORS[(i + 1) % MATLAB_COLORS.length],
+              borderWidth: 2.85, stepped: 'before', pointRadius: 0,
+              data: log.map(d => stMap[d.vehicles.find(v => v.id === id)?.fsm_state || 'CACC'] || 4)
+            }))
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+            devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: legendOpts(), zoom: zoomOpts(), tooltip: tooltipOpts() },
+            scales: {
+              x: axisStyle('Waktu (s)'),
+              y: {
+                ...axisStyle('State FSM'), min: 0, max: 5,
+                ticks: {
+                  stepSize: 1, callback: v => ({ 1: 'EMERGENCY', 2: 'ACC/IN_TRANSIT', 3: 'DEG/DEP', 4: 'CACC/TRANS', 5: 'LEADER' }[v] || ''),
+                  color: '#475569', font: { size: 10, weight: '600', family: "'Inter',sans-serif" }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      const logEl = document.getElementById('modeSwitchLog');
+      if (switchLog && switchLog.length) {
+        logEl.innerHTML = switchLog.slice().reverse().map(sw => {
+          if (sw.event && (sw.vehicle_id == null)) {
+            const detail = sw.event === 'leader_swap'
+              ? `P${sw.platoon_a}↔P${sw.platoon_b} · leaders → A:${sw.new_leader_a} B:${sw.new_leader_b}`
+              : sw.event === 'leader_promote'
+                ? `P${sw.platoon_id} promote ${sw.old_leader}→${sw.new_leader}`
+                : sw.event === 'emergency_promote'
+                  ? `P${sw.platoon_id} emergency ${sw.old_leader}→${sw.new_leader} (AoI ${sw.trigger_aoi_ms}ms)`
+                  : (sw.event || '');
+            return `<div style="padding:8px 12px;border-left:3px solid #4f46e5;margin-bottom:6px;font-size:.8rem;background:#f1f5f9;border-radius:0 10px 10px 0;border:1px solid rgba(15,23,42,.06)">
+        <span style="color:#64748b">t=${sw.time.toFixed(2)}s</span>&nbsp;
+        <strong style="color:#4338ca">${sw.event}</strong>
+        <span style="color:#64748b;font-size:.72rem"> ${detail} · ${sw.reason || ''}</span>
+      </div>`;
+          }
+          const col = sw.to === 'EMERGENCY' ? '#cc3333' : sw.to === 'ACC' ? '#e6a817' : sw.to === 'CACC' ? '#4caf7d' : '#8b949e';
+          return `<div style="padding:8px 12px;border-left:3px solid ${col};margin-bottom:6px;font-size:.8rem;background:#f8fafc;border-radius:0 10px 10px 0;border:1px solid rgba(15,23,42,.06)">
+        <span style="color:#64748b">t=${sw.time.toFixed(2)}s</span>&nbsp;
+        V${sw.vehicle_id}:
+        <strong style="color:#475569">${sw.from || '?'}</strong>
+        <span style="color:#64748b"> → </span>
+        <strong style="color:${col}">${sw.to || '?'}</strong>
+        <span style="color:#64748b;font-size:.72rem"> (${sw.reason || ''})</span>
+      </div>`;
+        }).join('');
+      } else {
+        logEl.innerHTML = '<p style="color:#64748b;padding:12px;font-size:.85rem">Tidak ada transisi mode tercatat.</p>';
+      }
+
+      if (colLog && colLog.length) {
+        document.getElementById('collisionReport').style.display = 'block';
+        document.getElementById('collisionDetails').innerHTML = colLog.map(c =>
+          `<div style="background:rgba(204,51,51,.06);border:1px solid rgba(204,51,51,.35);padding:12px;border-radius:8px;margin-bottom:8px;font-size:.84rem;line-height:1.6">
+        <div><strong style="color:#cc3333">t=${c.time.toFixed(2)}s</strong> — V${c.vehicles.join(' &amp; V')}</div>
+        <div style="color:#8b949e">Cause: ${c.cause}</div>
+        <div style="color:#8b949e">Gap: ${c.gap.toFixed(3)} m &nbsp;|&nbsp; Δv: ${c.relative_velocity.toFixed(3)} m/s</div>
+      </div>`
+        ).join('');
+      }
+    }
+
+    // ── CONCLUSIONS ───────────────────────────────────────────
+    function renderConclusions(data) {
+      const items = [];
+      const avgSI = data.data.length ? data.data.reduce((s, d) => s + d.stability_index, 0) / data.data.length : 0;
+      if (!data.collision_occurred) {
+        items.push({ cls: '', text: '<strong style="color:#4caf7d">✓ No Collision.</strong> System maintained safe inter-vehicle spacing throughout the experiment. Controller parameters within acceptable operating range.' });
+      } else {
+        const c = data.collision_log[0];
+        items.push({ cls: 'danger', text: `<strong style="color:#cc3333">✗ Collision at t=${c.time.toFixed(2)}s.</strong> Cause: ${c.cause}. Gap at collision: ${c.gap.toFixed(3)} m. Increase initial spacing or reduce network latency.` });
+      }
+      if (avgSI > 0.8) items.push({ cls: '', text: `<strong>String Stability VERIFIED</strong> (avg SI=${avgSI.toFixed(3)}). Spacing errors attenuate downstream. CACC demonstrates string stability per Swaroop &amp; Hedrick (1996).` });
+      else if (avgSI > 0.5) items.push({ cls: 'warn', text: `<strong>Marginal String Stability</strong> (avg SI=${avgSI.toFixed(3)}). Some error amplification detected. Recommend: ↑ α feedforward, ↓ Kp, or ↑ time headway h.` });
+      else items.push({ cls: 'danger', text: `<strong>String INSTABILITY DETECTED</strong> (avg SI=${avgSI.toFixed(3)}). Spacing errors amplify downstream. Increase h or reduce gains.` });
+      if (data.config.latency_ms > 50) items.push({ cls: 'warn', text: `<strong>High Latency (${data.config.latency_ms}ms)</strong> exceeds 50ms. URLLC target &lt;10ms. Enable URLLC slice &amp; RSU edge nodes.` });
+      if (data.config.packet_loss > 5) items.push({ cls: 'warn', text: `<strong>Packet Loss (${data.config.packet_loss}%)</strong> above 5%. 3GPP TR 36.885 requires PDR &gt;95%.` });
+      const aoi = data.aoi_distribution || {};
+      if (aoi.peak_ms) items.push({
+        cls: aoi.peak_ms > 500 ? 'danger' : aoi.peak_ms > 100 ? 'warn' : '',
+        text: `<strong>AoI Peak: ${aoi.peak_ms}ms</strong> (mean=${aoi.mean_ms}ms, p95=${aoi.p95_ms}ms). M/D/1 theory: ${aoi.theoretical_peak_ms}ms. ${Math.abs(aoi.peak_ms - aoi.theoretical_peak_ms) < 50 ? 'Good agreement with queuing theory ✓' : 'Discrepancy may indicate burst losses exceeding Poisson assumption.'}`
+      });
+      if ((data.mode_switch_log || []).length > 0) items.push({ cls: 'warn', text: `<strong>${data.mode_switch_log.length} FSM transitions.</strong> Each CACC→ACC switch increases spacing variability. Improve network reliability to reduce transitions.` });
+      items.push({ cls: '', text: '<strong>Research Recommendations:</strong><br>1. Run Scenario S-1 (sinusoidal leader sweep 0.1–2.0 Hz) to validate frequency-domain string stability.<br>2. Compare results against PLEXE benchmark (Segata 2014) using identical CACC parameters.<br>3. Use ACC vs CACC comparison mode to quantify V2V communication benefit under emergency braking.' });
+      document.getElementById('conclusionsList').innerHTML = items.map(i => `<div class="conclusion-item ${i.cls}">${i.text}</div>`).join('');
+      document.getElementById('configBadges').innerHTML =
+        `<span class="badge" style="background:rgba(0,153,204,.15);color:#0099cc">τact=${data.config.tau_act || 0.25}s</span>
+     <span class="badge" style="background:rgba(153,102,204,.15);color:#9966cc">Ki=${data.config.ki || 0.01}</span>
+     <span class="badge" style="background:rgba(76,175,125,.15);color:#4caf7d">α=${data.config.alpha || 0.9}</span>
+     <span class="badge" style="background:rgba(230,168,23,.15);color:#e6a817">h=${data.config.time_headway || 0.8}s</span>
+     <span class="badge" style="background:rgba(79,70,229,.12);color:#4f46e5">Topology=${data.config.topology || 'predecessor'}</span>
+     <span class="badge" style="background:rgba(204,51,51,.15);color:#cc3333">Sec.Delay=${data.config.security_delay_ms || 3}ms</span>`;
+    }
+
+    document.getElementById('exportBtn').addEventListener('click', () => { if (expData) window.open((window.API_BASE||'') + '/api/export_csv/' + expData.experiment_id, '_blank'); });
+    document.getElementById('newExpBtn').addEventListener('click', () => { window.location.href = '/configure.html'; });
+  </script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="/config.js"></script>
+  <script>window.AUTH.requireLogin();</script>
+</body>
+
+</html>

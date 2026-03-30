@@ -1,0 +1,2044 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Simulasi langsung — Platooning V2V</title>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════ DESIGN SYSTEM — MATCHING LOGIN ═══════════════════ */
+:root{
+  --bg-deep:#060612;--bg-surface:rgba(255,255,255,.98);
+  --glass:rgba(255,255,255,.98);--glass-border:rgba(102,126,234,.18);
+  --neon-cyan:#667eea;--neon-green:#2c7a7b;--neon-magenta:#764ba2;
+  --neon-amber:#c05621;--neon-red:#c53030;--neon-purple:#764ba2;
+  --text-primary:#2d3748;--text-muted:#4a5568;--text-dim:#718096;
+  --glow-sm:0 0 6px;--glow-md:0 0 14px;--glow-lg:0 0 28px;
+  --radius:10px;--radius-lg:14px;
+  --font-display:'Inter','Segoe UI',Tahoma,sans-serif;--font-body:'Inter','Segoe UI',Tahoma,sans-serif;--font-mono:'Consolas',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:linear-gradient(180deg,#eef2ff 0%,#f8fafc 40%,#f1f5f9 100%);color:var(--text-primary);font-family:var(--font-body);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+/* ─── ANIMATIONS ─── */
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+@keyframes floatSlow{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+@keyframes pulseGlow{0%,100%{opacity:.7;filter:brightness(1);}50%{opacity:1;filter:brightness(1.3);}}
+@keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
+@keyframes borderPulse{0%,100%{border-color:rgba(0,240,255,.15);}50%{border-color:rgba(0,240,255,.35);}}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+@keyframes scanline{0%{top:-100%;}100%{top:200%;}}
+/* ─── NAV BAR ─── */
+.nav{background:rgba(255,255,255,.98);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:8px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(102,126,234,.15);flex-shrink:0;flex-wrap:wrap;position:relative;z-index:10;box-shadow:0 2px 12px rgba(102,126,234,.08);}
+.nav::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#667eea,#764ba2,transparent);opacity:.3;}
+.nav-title{color:#4f46e5;font-family:'Plus Jakarta Sans',var(--font-display);font-weight:800;font-size:.82rem;letter-spacing:.06em;}
+.btn{padding:6px 14px;border:1px solid var(--glass-border);border-radius:var(--radius);font-family:var(--font-body);font-weight:700;cursor:pointer;font-size:.78rem;transition:all .25s cubic-bezier(.4,0,.2,1);text-decoration:none;display:inline-block;backdrop-filter:blur(8px);position:relative;overflow:hidden;}
+.btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08),transparent);opacity:0;transition:opacity .25s;}
+.btn:hover::before{opacity:1;}
+.btn-green{background:linear-gradient(135deg,rgba(56,178,172,.3),rgba(44,122,123,.3));color:var(--neon-green);border-color:rgba(56,178,172,.3);}
+.btn-purple{background:linear-gradient(135deg,rgba(102,126,234,.3),rgba(118,75,162,.3));color:#b794f6;border-color:rgba(102,126,234,.3);}
+.btn-red{background:linear-gradient(135deg,rgba(245,101,101,.3),rgba(197,48,48,.3));color:var(--neon-red);border-color:rgba(245,101,101,.3);}
+.btn-orange{background:linear-gradient(135deg,rgba(237,137,54,.3),rgba(192,86,33,.3));color:var(--neon-amber);border-color:rgba(237,137,54,.3);}
+.btn-teal{background:rgba(0,240,255,.06);border:1px solid rgba(0,240,255,.25);color:var(--neon-cyan);}
+.btn:hover{transform:translateY(-2px);box-shadow:var(--glow-sm) var(--neon-cyan);filter:brightness(1.2);}
+.btn:active{transform:translateY(0);filter:brightness(.9);}
+.nav-time{background:rgba(102,126,234,.08);padding:6px 16px;border-radius:var(--radius);font-family:var(--font-display);font-size:1rem;font-weight:900;color:#667eea;border:1px solid rgba(102,126,234,.2);letter-spacing:.08em;}
+.nav-sep{width:1px;height:22px;background:linear-gradient(180deg,transparent,var(--glass-border),transparent);}
+/* ─── WORKSPACE ─── */
+.workspace{display:grid;grid-template-columns:1fr 350px;flex:1;min-height:0;gap:0;}
+.canvas-area{display:flex;flex-direction:column;min-height:0;position:relative;}
+#mainCanvas{flex:1;min-height:0;cursor:grab;display:block;background:var(--bg-deep);}
+#mainCanvas:active{cursor:grabbing;}
+#stWrap{flex-shrink:0;background:var(--bg-deep);border-top:1px solid var(--glass-border);transition:height .4s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+#stCanvas{width:100%;display:block;}
+/* ─── PANEL ─── */
+.panel{background:rgba(255,255,255,.98);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-left:1px solid rgba(102,126,234,.12);display:flex;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(102,126,234,.2) transparent;box-shadow:-2px 0 12px rgba(102,126,234,.06);}
+.panel::-webkit-scrollbar{width:4px;}
+.panel::-webkit-scrollbar-track{background:transparent;}
+.panel::-webkit-scrollbar-thumb{background:rgba(102,126,234,.25);border-radius:4px;}
+.pbox{padding:14px 16px;border-bottom:1px solid rgba(102,126,234,.08);animation:fadeSlideUp .4s ease-out both;}
+.plabel{font-family:var(--font-display);font-size:.6rem;color:#667eea;text-transform:uppercase;font-weight:700;margin-bottom:10px;letter-spacing:.15em;}
+.kpi-mini{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.km{background:rgba(102,126,234,.04);padding:10px 12px;border-radius:var(--radius);text-align:center;border:1px solid rgba(102,126,234,.1);transition:all .3s;position:relative;overflow:hidden;}
+.km::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#667eea,transparent);opacity:.3;}
+.km:hover{border-color:rgba(102,126,234,.25);box-shadow:inset 0 0 20px rgba(102,126,234,.04);}
+.km-label{font-family:var(--font-display);font-size:.55rem;color:#718096;text-transform:uppercase;letter-spacing:.1em;}
+.km-val{font-size:1.1rem;font-family:var(--font-mono);font-weight:700;color:#2c7a7b;}
+/* ─── VEHICLE CARDS ─── */
+.veh-card{background:rgba(255,255,255,.95);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;border-left:3px solid #667eea;transition:all .35s cubic-bezier(.4,0,.2,1);border:1px solid rgba(102,126,234,.1);border-left-width:3px;position:relative;overflow:hidden;}
+.veh-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(102,126,234,.02),transparent);pointer-events:none;}
+.veh-card:hover{transform:translateX(3px);box-shadow:0 2px 8px rgba(102,126,234,.1);border-color:rgba(102,126,234,.2);}
+.veh-card.degraded{border-left-color:#c05621;}
+.veh-card.acc-mode{border-left-color:#764ba2;}
+.veh-card.emergency{border-left-color:#c53030;animation:borderPulse 1s ease-in-out infinite;}
+.veh-card.collided{border-left-color:#c53030;background:rgba(245,101,101,.06);}
+.veh-card.transfer-mode{border-left-color:#667eea;}
+.veh-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.veh-id{font-family:var(--font-display);font-weight:700;font-size:.78rem;color:#4a5568;letter-spacing:.05em;}
+.fsm-badge{font-family:var(--font-mono);font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.05em;}
+.fsm-CACC{background:rgba(102,126,234,.1);color:#667eea;border:1px solid rgba(102,126,234,.2);}
+.fsm-DEGRADED{background:rgba(237,137,54,.1);color:#c05621;border:1px solid rgba(237,137,54,.2);}
+.fsm-ACC{background:rgba(118,75,162,.1);color:#764ba2;border:1px solid rgba(118,75,162,.2);}
+.fsm-EMERGENCY{background:rgba(245,101,101,.12);color:#c53030;border:1px solid rgba(245,101,101,.2);animation:pulseGlow 1.5s ease-in-out infinite;}
+.fsm-TRANSFER{background:rgba(102,126,234,.1);color:#667eea;border:1px solid rgba(102,126,234,.2);}
+.veh-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
+.vm{text-align:center;padding:2px 0;}
+.vm-label{font-size:.55rem;color:#718096;font-family:var(--font-display);letter-spacing:.05em;}
+.vm-val{font-size:.8rem;font-family:var(--font-mono);font-weight:700;color:#2d3748;}
+.aoi-row{display:flex;align-items:center;gap:6px;margin-top:6px;}
+.aoi-label{font-size:.55rem;color:var(--text-muted);width:28px;font-family:var(--font-display);}
+.aoi-bar-bg{flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;}
+.aoi-bar-fill{height:100%;border-radius:4px;transition:width .3s cubic-bezier(.4,0,.2,1),background .3s;box-shadow:var(--glow-sm) currentColor;}
+.aoi-val{font-size:.6rem;font-family:var(--font-mono);color:var(--text-muted);width:42px;text-align:right;}
+/* ─── NETWORK ─── */
+.net-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(102,126,234,.06);font-size:.78rem;}
+.net-row:last-child{border:none;}
+.net-key{color:#718096;font-family:var(--font-body);}
+.net-val{font-family:var(--font-mono);font-weight:600;color:#2d3748;}
+.delay-bar{height:6px;border-radius:4px;overflow:hidden;display:flex;margin-top:6px;background:rgba(255,255,255,.03);}
+.db-net{background:linear-gradient(90deg,#00f0ff,#38b2ac);box-shadow:0 0 8px rgba(0,240,255,.3);}
+.db-sec{background:linear-gradient(90deg,#a855f7,#7c3aed);box-shadow:0 0 8px rgba(168,85,247,.3);}
+#latencyMiniChart{max-height:70px;}
+/* ─── DISTURBANCE / PLATOON ─── */
+.dist-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.dist-grid .dist-btn.full-row{grid-column:1/-1;}
+.dist-btn{padding:8px;font-size:.72rem;border:1px solid rgba(102,126,234,.15);background:rgba(255,255,255,.95);color:#4a5568;border-radius:var(--radius);cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);font-family:var(--font-body);font-weight:600;backdrop-filter:blur(8px);position:relative;overflow:hidden;}
+.dist-btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(102,126,234,.04),transparent);opacity:0;transition:opacity .3s;}
+.dist-btn:hover{background:rgba(102,126,234,.08);border-color:rgba(102,126,234,.25);color:#667eea;transform:translateY(-1px);box-shadow:0 2px 8px rgba(102,126,234,.12);}
+.dist-btn:hover::after{opacity:1;}
+.cooldown-bar{height:3px;border-radius:3px;background:rgba(0,240,255,.08);margin-top:5px;overflow:hidden;}
+.cooldown-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--neon-cyan),var(--neon-green));transition:width .3s;box-shadow:0 0 6px var(--neon-cyan);}
+.precond-ok{color:var(--neon-green);font-family:var(--font-mono);font-size:.7rem;padding:4px 10px;background:rgba(0,255,136,.06);border-radius:var(--radius);border:1px solid rgba(0,255,136,.15);}
+.precond-err{color:var(--neon-red);font-family:var(--font-mono);font-size:.7rem;padding:4px 10px;background:rgba(255,51,85,.06);border-radius:var(--radius);border:1px solid rgba(255,51,85,.15);}
+.precond-warn{color:var(--neon-amber);font-family:var(--font-mono);font-size:.7rem;padding:4px 10px;background:rgba(255,179,0,.06);border-radius:var(--radius);border:1px solid rgba(255,179,0,.15);}
+.queue-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-family:var(--font-mono);font-size:.62rem;font-weight:700;}
+.queue-free{background:rgba(0,255,136,.08);color:var(--neon-green);border:1px solid rgba(0,255,136,.2);box-shadow:var(--glow-sm) rgba(0,255,136,.1);}
+.queue-busy{background:rgba(255,51,85,.08);color:var(--neon-red);border:1px solid rgba(255,51,85,.2);animation:pulseGlow 2s infinite;}
+.emrg-promo{position:fixed;top:20px;right:20px;background:var(--glass);backdrop-filter:blur(20px);color:var(--neon-red);padding:14px 24px;border-radius:var(--radius-lg);font-family:var(--font-display);font-weight:700;font-size:.8rem;z-index:999;display:none;border:1px solid rgba(255,51,85,.3);box-shadow:var(--glow-lg) rgba(255,51,85,.3);}
+.speed-info{font-size:.7rem;color:var(--text-muted);margin-top:4px;font-family:var(--font-body);}
+.speed-info span{color:var(--neon-green);font-family:var(--font-mono);}
+/* ─── TABS ─── */
+.ptab-bar{display:flex;gap:4px;padding:8px 14px 0;flex-shrink:0;}
+.ptab{padding:5px 12px;border-radius:var(--radius) var(--radius) 0 0;font-family:var(--font-display);font-size:.62rem;font-weight:700;cursor:pointer;border:1px solid rgba(102,126,234,.12);border-bottom:none;background:rgba(255,255,255,.6);color:#718096;transition:all .3s;letter-spacing:.08em;}
+.ptab.active{background:rgba(102,126,234,.08);border-color:rgba(102,126,234,.25);color:#667eea;}
+.ptab:hover:not(.active){background:rgba(102,126,234,.04);color:#4a5568;}
+.ptab-panel{display:none;}.ptab-panel.active{display:block;}
+/* ─── OVERLAYS ─── */
+.overlay{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:6px;pointer-events:none;z-index:5;}
+.ol-badge{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:6px 12px;border-radius:var(--radius);font-family:var(--font-mono);font-size:.7rem;font-weight:700;color:#2d3748;border:1px solid rgba(102,126,234,.15);animation:floatSlow 6s ease-in-out infinite;box-shadow:0 4px 12px rgba(102,126,234,.1);}
+.ol-badge:nth-child(2){animation-delay:.8s;}
+.ol-badge:nth-child(3){animation-delay:1.6s;}
+.ol-badge:nth-child(4){animation-delay:2.4s;}
+.collision-alert{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--glass);backdrop-filter:blur(20px);color:var(--neon-red);padding:20px 36px;border-radius:var(--radius-lg);font-family:var(--font-display);font-size:1.1rem;font-weight:900;display:none;text-align:center;z-index:100;border:1px solid rgba(255,51,85,.4);box-shadow:var(--glow-lg) rgba(255,51,85,.4);letter-spacing:.1em;}
+#debugPanel{position:absolute;bottom:140px;left:12px;background:var(--glass);backdrop-filter:blur(16px);border:1px solid rgba(0,240,255,.2);border-radius:var(--radius);padding:10px 12px;font-family:var(--font-mono);font-size:.62rem;color:var(--neon-green);pointer-events:none;max-width:320px;line-height:1.7;display:none;}
+.ar-legend{display:flex;flex-wrap:wrap;gap:8px;font-size:.68rem;color:var(--text-muted);font-family:var(--font-body);}
+.ar-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle;box-shadow:var(--glow-sm) currentColor;}
+.sim-edu-strip{margin:0;padding:10px 18px;font-size:.75rem;line-height:1.55;color:#475569;background:linear-gradient(90deg,rgba(79,70,229,.07),rgba(13,148,136,.06));border-bottom:1px solid rgba(79,70,229,.12);flex-shrink:0;font-family:var(--font-body);}
+.sim-edu-strip strong{color:#3730a3;font-weight:600;}
+</style>
+</head><body>
+<div class="nav">
+  <span class="nav-title">🛜 Simulasi platoon V2V</span>
+  <div class="nav-sep"></div>
+  <span class="nav-time" id="simTime">0.0s</span>
+  <button class="btn btn-purple" id="startBtn">▶ START</button>
+  <button class="btn btn-red" id="stopBtn" style="display:none">■ STOP</button>
+  <div class="nav-sep"></div>
+  <a href="/configure" class="btn btn-green">⚙ Atur</a>
+  <a href="/compare" class="btn btn-teal">⚖ Banding</a>
+  <a href="/analysis" class="btn btn-orange">📊 Analisis</a>
+  <a href="/dashboard" class="btn btn-green">🏠 Beranda</a>
+  <div class="nav-sep"></div>
+  <button class="btn btn-teal" onclick="zoomIn()" title="Zoom In (+)">🔍+</button>
+  <button class="btn btn-teal" onclick="zoomOut()" title="Zoom Out (-)">🔍−</button>
+  <button class="btn btn-teal" onclick="viewAll()" title="Tampilkan semua platoon (F)">🗺 Semua</button>
+  <button class="btn btn-teal" onclick="resetCam()" title="Reset kamera (R)">⟳</button>
+  <label style="font-size:.72rem;color:#64748b;display:flex;align-items:center;gap:4px">
+    <input type="checkbox" id="followLeader" checked> Ikuti pemimpin
+  </label>
+  <label style="font-size:.72rem;color:#64748b;display:flex;align-items:center;gap:4px">
+    <input type="checkbox" id="showST" checked> Diagram waktu–ruang
+  </label>
+  <label style="font-size:.72rem;color:#64748b;display:flex;align-items:center;gap:4px">
+    <input type="checkbox" id="showDebug"> Debug
+  </label>
+</div>
+<p class="sim-edu-strip">Di sini Anda melihat <strong>platoon</strong> berjalan: kendaraan saling kirim data lewat <strong>V2V</strong>; kontrol <strong>CACC</strong> bergantung pada kualitas jaringan (delay, jitter 5G). Panel kanan menampilkan AoI, mode FSM, dan gangguan. Setelah simulasi berhenti, buka <strong>Analisis</strong> untuk grafik metrik lengkap.</p>
+<p id="maneuverTheoryLine" class="sim-edu-strip" style="display:none;font-size:.66rem;color:#93c5fd;line-height:1.4;margin-top:6px;border-left:3px solid rgba(0,240,255,.4);padding:6px 0 6px 12px;background:rgba(0,30,45,.25);border-radius:0 8px 8px 0"></p>
+
+<div class="workspace">
+  <div class="canvas-area">
+    <canvas id="mainCanvas"></canvas>
+    <div id="stWrap" style="height:130px">
+      <canvas id="stCanvas"></canvas>
+    </div>
+    <div class="overlay">
+      <div class="ol-badge" id="siOverlay">SI: 1.00 — STABLE</div>
+      <div class="ol-badge" id="aoidOverlay">Max AoI: 0ms</div>
+      <div class="ol-badge" id="pdrOverlay">PDR: 100%</div>
+      <div class="ol-badge" id="topologyOverlay">Topology: predecessor</div>
+      <div class="ol-badge" id="envOverlay">Lingkungan: —</div>
+    </div>
+    <div id="debugPanel"><div id="dbgContent">Waiting...</div></div>
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+      background:rgba(0,0,0,.55);border-radius:8px;padding:4px 14px;
+      font-size:.65rem;color:rgba(255,255,255,.4);pointer-events:none;white-space:nowrap">
+      Drag to pan &nbsp;·&nbsp; Scroll / pinch to zoom &nbsp;·&nbsp;
+      <kbd style="background:rgba(255,255,255,.12);border-radius:3px;padding:0 3px">F</kbd> Semua platoon &nbsp;·&nbsp;
+      <kbd style="background:rgba(255,255,255,.12);border-radius:3px;padding:0 3px">R</kbd> Reset &nbsp;·&nbsp;
+      <kbd style="background:rgba(255,255,255,.12);border-radius:3px;padding:0 3px">+ −</kbd> Zoom
+    </div>
+    <div class="emrg-promo" id="emergencyPromoAlert">⚡ EMERGENCY PROMOTION!</div>
+<div class="collision-alert" id="collisionAlert">💥 COLLISION DETECTED</div>
+  </div>
+  <div class="panel">
+    <div class="ptab-bar">
+      <div class="ptab active" onclick="showPTab(event,'ptab-vehicles')">Vehicles</div>
+      <div class="ptab" onclick="showPTab(event,'ptab-network')">Network</div>
+      <div class="ptab" onclick="showPTab(event,'ptab-disturbance')">Disturbance</div>
+      <div class="ptab" onclick="showPTab(event,'ptab-platoon')">🚛 Platoons</div>
+    </div>
+    <div class="ptab-panel active" id="ptab-vehicles">
+      <div class="pbox">
+        <div class="plabel">System KPIs</div>
+        <div class="kpi-mini">
+          <div class="km"><div class="km-label">Stability</div><div class="km-val" id="kSI">1.00</div></div>
+          <div class="km"><div class="km-label">Max AoI</div><div class="km-val" id="kAoI">0ms</div></div>
+          <div class="km"><div class="km-label">PDR</div><div class="km-val" id="kPDR">100%</div></div>
+          <div class="km"><div class="km-label">Mode</div><div class="km-val" id="kMode">CACC</div></div>
+        </div>
+      </div>
+      <div class="pbox"><div class="plabel">Vehicle Telemetry</div><div id="vehicleCards"></div></div>
+      <div class="pbox">
+        <div class="plabel">FSM State Legend</div>
+        <div class="ar-legend">
+          <span><span class="ar-dot" style="background:#00ffff"></span> Leader</span>
+          <span><span class="ar-dot" style="background:#38b2ac"></span> CACC</span>
+          <span><span class="ar-dot" style="background:#00bcd4"></span> TRANSFER</span>
+          <span><span class="ar-dot" style="background:#f6ad55"></span> DEGRADED</span>
+          <span><span class="ar-dot" style="background:#9f7aea"></span> ACC</span>
+          <span><span class="ar-dot" style="background:#f56565"></span> EMERGENCY</span>
+        </div>
+      </div>
+    </div>
+    <div class="ptab-panel" id="ptab-network">
+      <div class="pbox"><div class="plabel">5G Network (3GPP TR 38.885)</div><div id="netMetrics"></div></div>
+      <div class="pbox"><div class="plabel">Delay Breakdown</div><div id="delayBreakdown"></div></div>
+      <div class="pbox"><div class="plabel">Per-Link Latency (G-10)</div><div id="perLinkLatency"></div></div>
+      <div class="pbox"><div class="plabel">Latency History</div><canvas id="latencyMiniChart"></canvas></div>
+    </div>
+    <div class="ptab-panel" id="ptab-disturbance">
+      <div class="pbox">
+        <div class="plabel">Inject Disturbance</div>
+        <div class="dist-grid">
+          <button class="dist-btn" onclick="disturbance('leader_brake')">🛑 Leader Brake<br><span style="color:#718096;font-weight:400">-6 m/s² for 3s</span></button>
+          <button class="dist-btn" onclick="disturbance('acceleration_spike')">⬆ Accel Spike<br><span style="color:#718096;font-weight:400">+3 m/s²</span></button>
+          <button class="dist-btn" onclick="disturbance('network_degradation')">📡 Net Degrade<br><span style="color:#718096;font-weight:400">30% loss × 5s</span></button>
+          <button class="dist-btn" onclick="disturbance('rsu_offline')">🔌 RSU Offline<br><span style="color:#718096;font-weight:400">Disable RSU</span></button>
+          <button class="dist-btn full-row" onclick="disturbance('cut_in_vehicle')">🚗 Cut-in (P0)<br><span style="color:#718096;font-weight:400">Kendaraan asing di lajur platoon 0 (~25s)</span></button>
+        </div>
+        <div style="margin-top:10px;font-size:.72rem;color:#718096">Ref: GCDC Scenario S-2 / S-3. Ploeg et al. (2011). Cut-in: lalu lintas heterogen 1D.</div>
+      </div>
+      <div class="pbox"><div class="plabel">Event Log</div><div id="eventLog" style="font-size:.72rem;max-height:200px;overflow-y:auto"></div></div>
+    </div>
+    <!-- PLATOON MANAGEMENT TAB — Protocol-Compliant v6.0 -->
+    <div class="ptab-panel" id="ptab-platoon">
+      <!-- ManeuverQueue Status -->
+      <div class="pbox">
+        <div class="plabel">🔄 Status ManeuverQueue <span style="font-size:.62rem;color:#718096">(§7.5.1 Deadlock Prevention)</span></div>
+        <div id="queueStatusBadge" style="margin-bottom:6px">
+          <span class="queue-badge queue-free">Bebas — tidak ada manuver aktif</span>
+        </div>
+        <div id="queueActivePlatoons" style="font-size:.68rem;color:#718096"></div>
+      </div>
+
+      <!-- Tambah Platoon -->
+      <div class="pbox">
+        <div class="plabel">+ Tambah Platoon Baru</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <label style="font-size:.75rem;color:#a0aec0">Jml Kendaraan:</label>
+          <input type="number" id="newPlatoonVehicles" value="3" min="2" max="8"
+            style="width:60px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#e2e8f0;padding:4px 8px;font-size:.85rem">
+        </div>
+        <button class="dist-btn" style="width:100%;padding:10px;font-size:.8rem" onclick="addPlatoon()">Tambah Platoon</button>
+        <div style="font-size:.68rem;color:#718096;margin-top:6px">Ref: Bergenhem et al. (2012) §NEW-01</div>
+      </div>
+
+      <!-- Swap Leader (§6) -->
+      <div class="pbox">
+        <div class="plabel">🔄 Tukar Leader Antar Platoon <span style="font-size:.62rem;color:#718096">(§6 Protokol Swap)</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <div style="flex:1">
+            <label style="font-size:.72rem;color:#a0aec0;display:block;margin-bottom:3px">Platoon A:</label>
+            <select id="swapPlatoonA" onchange="validateSwap()" style="width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#e2e8f0;padding:5px 8px;font-size:.8rem">
+              <option value="">-- Pilih --</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <label style="font-size:.72rem;color:#a0aec0;display:block;margin-bottom:3px">Platoon B:</label>
+            <select id="swapPlatoonB" onchange="validateSwap()" style="width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#e2e8f0;padding:5px 8px;font-size:.8rem">
+              <option value="">-- Pilih --</option>
+            </select>
+          </div>
+        </div>
+        <div id="swapPrecond" style="margin-bottom:6px"></div>
+        <div id="swapSpeedInfo" class="speed-info"></div>
+        <button class="dist-btn" id="swapBtn" style="width:100%;padding:10px;font-size:.8rem;background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.4);margin-top:6px"
+          onclick="swapLeaders()">⇆ Tukar Leader (S1–S6 ✓)</button>
+        <div style="font-size:.67rem;color:#718096;margin-top:5px">Validasi S1-S6 otomatis. Ref: §6.3, Bergenhem et al. (2012).</div>
+      </div>
+
+      <!-- Promosi Leader (§5) -->
+      <div class="pbox">
+        <div class="plabel">⬆ Promosi Leader Intra-Platoon <span style="font-size:.62rem;color:#718096">(§5 Protokol Promosi)</span></div>
+        <div style="margin-bottom:6px">
+          <label style="font-size:.72rem;color:#a0aec0;display:block;margin-bottom:3px">Pilih Platoon:</label>
+          <select id="promotePlatoon" onchange="validatePromote()" style="width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#e2e8f0;padding:5px 8px;font-size:.8rem">
+            <option value="">-- Pilih platoon --</option>
+          </select>
+        </div>
+        <div id="promotePrecond" style="margin-bottom:6px"></div>
+        <button class="dist-btn" id="promoteBtn" style="width:100%;padding:10px;font-size:.8rem;background:rgba(246,173,85,.1);border-color:rgba(246,173,85,.4)"
+          onclick="promoteLeader()">👑 Promosikan Kendaraan Ke-2 (Prop 5.1 ✓)</button>
+        <div style="font-size:.67rem;color:#718096;margin-top:5px">V2→Leader, Leader→Ekor. Ref: §5.2, Ploeg et al. (2011).</div>
+      </div>
+
+      <!-- Transfer Kendaraan (§4) -->
+      <div class="pbox">
+        <div class="plabel">🚗 Transfer Kendaraan Antar Platoon <span style="font-size:.62rem;color:#718096">(§4 Protokol Transfer)</span></div>
+        <div style="margin-bottom:6px">
+          <label style="font-size:.75rem;color:#a0aec0;display:block;margin-bottom:4px">Kendaraan:</label>
+          <select id="transferVehicleId" onchange="validateTransfer()"
+            style="width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#e2e8f0;padding:5px 8px;font-size:.82rem">
+            <option value="">-- Pilih kendaraan --</option>
+          </select>
+        </div>
+        <div style="margin-bottom:8px">
+          <label style="font-size:.75rem;color:#a0aec0;display:block;margin-bottom:4px">Platoon Tujuan:</label>
+          <select id="transferTargetPlatoon" onchange="validateTransfer()"
+            style="width:100%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#e2e8f0;padding:5px 8px;font-size:.82rem">
+            <option value="">-- Pilih platoon --</option>
+          </select>
+        </div>
+        <div id="transferPrecond" style="margin-bottom:8px"></div>
+        <button class="dist-btn" id="transferBtn" style="width:100%;padding:10px;font-size:.8rem;background:rgba(159,114,234,.15);border-color:rgba(159,114,234,.4)"
+          onclick="transferVehicle()">Transfer Kendaraan (C1–C6 ✓)</button>
+        <div style="font-size:.68rem;color:#718096;margin-top:6px">Validasi C1-C6 otomatis. Ref: §4.2, §4.5 Algoritma 1.</div>
+      </div>
+
+      <!-- Protocol FSM Visualizer -->
+      <div class="pbox">
+        <div class="plabel">📊 FSM Protocol State</div>
+        <div id="fsmVisualizer" style="font-size:.68rem"></div>
+      </div>
+
+      <!-- Status Platoon Aktif -->
+      <div class="pbox">
+        <div class="plabel">Status Platoon Aktif</div>
+        <div id="platoonStatusList" style="font-size:.75rem;max-height:200px;overflow-y:auto"></div>
+        <button class="dist-btn" style="width:100%;margin-top:8px;font-size:.75rem" onclick="refreshPlatoonInfo()">Refresh Status</button>
+      </div>
+
+      <!-- Transfer/Maneuver Log -->
+      <div class="pbox">
+        <div class="plabel">Maneuver Log <span style="font-size:.62rem;color:#718096">(§9.7 Event Log)</span></div>
+        <div id="transferLog" style="font-size:.67rem;max-height:140px;overflow-y:auto;font-family:monospace"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// DEBUG LOGGER
+// ════════════════════════════════════════════════════════════
+const DEBUG = true;
+function dbg(...a)  { if (DEBUG) console.log('[V2V-SIM]', ...a); }
+function dbgW(...a) { if (DEBUG) console.warn('[V2V-SIM]', ...a); }
+
+document.getElementById('showDebug').addEventListener('change', e => {
+  document.getElementById('debugPanel').style.display = e.target.checked ? 'block' : 'none';
+});
+
+// ════════════════════════════════════════════════════════════
+// CONFIG & SOCKET
+// ════════════════════════════════════════════════════════════
+const cfg = JSON.parse(
+  sessionStorage.getItem('simulationConfig') ||
+  '{"num_vehicles":4,"num_platoons":1,"initial_spacing":15,"desired_speed":20,' +
+  '"latency_ms":10,"packet_loss":1,"jitter_ms":2,"kp":0.5,"kd":0.3,"ki":0.01,' +
+  '"alpha":0.9,"tau_act":0.25,"time_headway":0.8,"security_delay_ms":3,' +
+  '"network_slicing":"URLLC","rsu_enabled":true,"rsu_position_m":460,"rsu_radius_m":95,' +
+  '"adaptive_comm_control":true,"curve_enabled":false,"curve_start_m":380,"curve_end_m":500,' +
+  '"maneuver_reposition_speed_ms":24,"reposition_swap_delay_s":0.2,"reposition_swap_speed_ms":20,' +
+  '"reposition_promote_delay_s":0.25,"reposition_promote_speed_ms":16,"reposition_emergency_delay_s":0,' +
+  '"reposition_emergency_speed_ms":28,"topology":"predecessor","leader_profile":"normal",' +
+  '"max_accel":3,"max_decel":6,"bandwidth_mbps":100,"random_seed":null}'
+);
+dbg('Config:', cfg);
+
+// Gunakan window.createSocket() dari config.js agar pakai Render URL + JWT token
+const socket = (typeof window.createSocket === 'function')
+    ? window.createSocket()
+    : io(window.location.origin, { transports:['websocket','polling'], reconnection:true });
+
+// ════════════════════════════════════════════════════════════
+// CANVAS ELEMENTS
+// ════════════════════════════════════════════════════════════
+const mc    = document.getElementById('mainCanvas');
+const ctx   = mc.getContext('2d');
+const stc   = document.getElementById('stCanvas');
+const stCtx = stc.getContext('2d');
+
+// ════════════════════════════════════════════════════════════
+// CAMERA STATE
+//
+// COORDINATE SYSTEM (horizontal road, +X = arah maju platoon):
+//
+//   World: position P (m) → world_x = P * MSCALE
+//   Lajur: world_y = laneY(platoon_id), jalan memanjang sumbu X
+//   Transform: ctx.translate(W/2 - camX, H/2 - camY); ctx.scale(zoom, zoom)
+//
+//   Pusat layar: world (camX/zoom, camY/zoom) ≈ (P_leader * MSCALE, 0) saat ikut pemimpin
+//   camXForPosition(P) = P * MSCALE * zoom
+// ════════════════════════════════════════════════════════════
+const MSCALE = 4.0;      // base pixels-per-metre
+let camX = 0, camY = 0, zoom = 1.0;
+let cameraInitialized = false;   // BUG-1 fix: snap on first frame
+let dragging = false, dragStart = {x:0, y:0};
+
+// ── TRANSFER ANIMATION STATE ───────────────────────────────
+// Tracks vehicles currently animating lane-change (world Y / lintang)
+// { vid: { fromY, toY, startTime, duration, color } } — lintang lajur (world Y)
+const activeTransitions = {};
+let prevPlatoonIds = {};   // vid -> last known platoon_id
+// v7: track IN_TRANSIT animation state (fase 3 multi-phase transfer)
+const inTransitState = {};  // vid -> { srcY, destY, startTime, duration }
+
+/** Perhalus posisi tampilan antar state_update (tanpa ubah backend). */
+let vehicleDisplayPos = Object.create(null);
+let cutInDisplayPos = null;
+const SMOOTH_POS_ALPHA = 0.22;
+
+function camXForPosition(P) {
+  return P * MSCALE * zoom;
+}
+
+// ── CAMERA FUNCTIONS ───────────────────────────────────────
+function zoomIn()  { zoom = Math.min(4.0, zoom + 0.2); }
+function zoomOut() { zoom = Math.max(0.2, zoom - 0.15); }
+
+function viewAll() {
+  if (!lastState || !lastState.vehicles.length) return;
+  const pids = [...new Set(lastState.vehicles.map(v=>v.platoon_id).filter(p=>p>=0))].sort();
+  const nP = Math.max(1, pids.length);
+  const LANE_W = 150, SHOULDER = 50;
+  const totalH = nP * LANE_W + SHOULDER * 2;
+  zoom = Math.min(4.0, Math.max(0.2, (mc.height * 0.78) / totalH));
+  camY = 0;
+  document.getElementById('followLeader').checked = true;
+  cameraInitialized = false;
+  dbg('viewAll: zoom=', zoom.toFixed(2), 'nP=', nP);
+}
+
+function resetCam() {
+  camX = 0; camY = 0; zoom = 1.0;
+  cameraInitialized = false;
+  dbg('Camera reset — will snap to leader on next update');
+}
+
+// ── MOUSE / WHEEL CAMERA ───────────────────────────────────
+mc.addEventListener('mousedown', e => {
+  dragging = true;
+  dragStart = {x: e.clientX + camX, y: e.clientY + camY};
+  // Uncheck Follow Leader when user manually drags
+  if (e.buttons === 1) document.getElementById('followLeader').checked = false;
+});
+mc.addEventListener('mousemove', e => {
+  if (dragging) { camX = dragStart.x - e.clientX; camY = dragStart.y - e.clientY; }
+});
+mc.addEventListener('mouseup',    () => dragging = false);
+mc.addEventListener('mouseleave', () => dragging = false);
+mc.addEventListener('wheel', e => {
+  const factor = e.deltaY > 0 ? -0.1 : 0.1;
+  zoom = Math.max(0.2, Math.min(4.0, zoom + factor));
+  e.preventDefault();
+}, {passive: false});
+
+// ── TOUCH / PINCH-TO-ZOOM ─────────────────────────────────
+let touchStartDist = 0, touchStartZoom = 1.0;
+let touchDragStart = null;
+mc.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    touchStartDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY);
+    touchStartZoom = zoom;
+  } else if (e.touches.length === 1) {
+    touchDragStart = {x: e.touches[0].clientX + camX, y: e.touches[0].clientY + camY};
+    document.getElementById('followLeader').checked = false;
+  }
+  e.preventDefault();
+}, {passive: false});
+mc.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    const d = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY);
+    zoom = Math.max(0.2, Math.min(4.0, touchStartZoom * (d / touchStartDist)));
+  } else if (e.touches.length === 1 && touchDragStart) {
+    camX = touchDragStart.x - e.touches[0].clientX;
+    camY = touchDragStart.y - e.touches[0].clientY;
+  }
+  e.preventDefault();
+}, {passive: false});
+mc.addEventListener('touchend', () => { touchDragStart = null; });
+
+// ── KEYBOARD SHORTCUTS ─────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  const PAN = 40;
+  switch(e.key) {
+    case '+': case '=': zoomIn(); break;
+    case '-': case '_': zoomOut(); break;
+    case 'f': case 'F': viewAll(); break;
+    case 'r': case 'R': resetCam(); break;
+    case 'ArrowLeft':  camX -= PAN; e.preventDefault(); break;
+    case 'ArrowRight': camX += PAN; e.preventDefault(); break;
+    case 'ArrowUp':    camY -= PAN; e.preventDefault(); break;
+    case 'ArrowDown':  camY += PAN; e.preventDefault(); break;
+  }
+});
+
+// ════════════════════════════════════════════════════════════
+// CANVAS RESIZE
+// ════════════════════════════════════════════════════════════
+let showST = true;
+
+function resizeCanvas() {
+  const wrap = mc.parentElement;   // .canvas-area
+  const stH  = showST ? 130 : 0;
+  mc.width   = wrap.clientWidth;
+  mc.height  = Math.max(200, wrap.clientHeight - stH);
+  dbg('Canvas resized:', mc.width + 'x' + mc.height);
+}
+function resizeST() {
+  stc.width  = stc.parentElement.clientWidth;
+  stc.height = 130;
+}
+
+window.addEventListener('resize', () => { resizeCanvas(); resizeST(); });
+
+document.getElementById('showST').addEventListener('change', e => {
+  showST = e.target.checked;
+  document.getElementById('stWrap').style.height = showST ? '130px' : '0px';
+  setTimeout(resizeCanvas, 310);
+});
+
+// ════════════════════════════════════════════════════════════
+// COLOUR HELPERS
+// ════════════════════════════════════════════════════════════
+const PALETTE = ['#00ffff','#38b2ac','#f6ad55','#fc8181','#68d391','#9f7aea','#ffd700','#a0b4ff'];
+
+function vehicleColor(v, AR) {
+  if (v.collided)  return '#f56565';
+  if (v.is_leader) return '#00ffff';
+  const ar = AR?.[v.id];
+  if (ar == null) {
+    return {CACC:'#38b2ac',DEGRADED:'#f6ad55',ACC:'#9f7aea',EMERGENCY:'#f56565'}[v.fsm_state||'CACC'] || '#38b2ac';
+  }
+  return ar < 1.0 ? '#38b2ac' : ar < 1.2 ? '#f6ad55' : '#f56565';
+}
+
+function _hexToRgb(hex) {
+  if (!hex || hex[0] !== '#') return { r: 80, g: 90, b: 110 };
+  const n = hex.slice(1);
+  if (n.length === 3) {
+    return { r: parseInt(n[0] + n[0], 16), g: parseInt(n[1] + n[1], 16), b: parseInt(n[2] + n[2], 16) };
+  }
+  return { r: parseInt(n.slice(0, 2), 16), g: parseInt(n.slice(2, 4), 16), b: parseInt(n.slice(4, 6), 16) };
+}
+function _shadeRgb(hex, d) {
+  const { r, g, b } = _hexToRgb(hex);
+  return `rgb(${Math.max(0, Math.min(255, r + d))},${Math.max(0, Math.min(255, g + d))},${Math.max(0, Math.min(255, b + d))})`;
+}
+
+function _addCarSilhouettePath(ctx, vy, hw, hl) {
+  const frontY = vy - hl, rearY = vy + hl;
+  const taper = hw * 0.38;
+  ctx.beginPath();
+  ctx.moveTo(-taper, frontY);
+  ctx.quadraticCurveTo(0, frontY - hl * 0.14, taper, frontY);
+  ctx.lineTo(hw - 0.5, frontY + hl * 0.16);
+  ctx.lineTo(hw - 0.5, rearY - hl * 0.12);
+  ctx.quadraticCurveTo(hw * 0.88, rearY, 0, rearY + hl * 0.05);
+  ctx.quadraticCurveTo(-hw * 0.88, rearY, -hw + 0.5, rearY - hl * 0.12);
+  ctx.lineTo(-hw + 0.5, frontY + hl * 0.16);
+  ctx.closePath();
+}
+
+/**
+ * Mobil tampak atas (sedan): kap mesin menyempit ke depan, kaca, roda, highlight samping.
+ * Koordinat: pusat horizontal 0, vy = pusat longitudinal kendaraan.
+ */
+function drawCarTopDown(ctx, vy, cW, cL, bodyHex, opt) {
+  opt = opt || {};
+  const hw = cW / 2, hl = cL / 2;
+  const frontY = vy - hl, rearY = vy + hl;
+  const z = typeof opt.zoomInv === 'number' ? opt.zoomInv : 1;
+
+  const spdN = Math.min(1, Math.max(0, (opt.speedKmh || 0) / 85));
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.42)';
+  ctx.beginPath();
+  ctx.ellipse(0, vy + hl * 0.12, hw + 2.5 + spdN * 5, hl * 0.38 + spdN * 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  _addCarSilhouettePath(ctx, vy, hw, hl);
+  const lg = ctx.createLinearGradient(-hw, frontY, hw, rearY);
+  if (bodyHex && bodyHex[0] === '#') {
+    lg.addColorStop(0, _shadeRgb(bodyHex, 40));
+    lg.addColorStop(0.45, bodyHex);
+    lg.addColorStop(1, _shadeRgb(bodyHex, -38));
+  } else {
+    lg.addColorStop(0, '#5a90a0');
+    lg.addColorStop(1, '#2a5060');
+  }
+  ctx.fillStyle = lg;
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(12, 18, 32, 0.82)';
+  ctx.beginPath();
+  ctx.moveTo(-hw * 0.62, frontY + hl * 0.2);
+  ctx.lineTo(hw * 0.62, frontY + hl * 0.2);
+  ctx.lineTo(hw * 0.52, frontY + hl * 0.38);
+  ctx.lineTo(-hw * 0.52, frontY + hl * 0.38);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-hw * 0.58, rearY - hl * 0.28);
+  ctx.lineTo(hw * 0.58, rearY - hl * 0.28);
+  ctx.lineTo(hw * 0.48, rearY - hl * 0.12);
+  ctx.lineTo(-hw * 0.48, rearY - hl * 0.12);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(255, 248, 220, 0.95)';
+  ctx.beginPath();
+  ctx.arc(-hw * 0.55, frontY + hl * 0.1, 1.6, 0, Math.PI * 2);
+  ctx.arc(hw * 0.55, frontY + hl * 0.1, 1.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (opt.headlights !== false) {
+    const hg = (cx) => {
+      const g = ctx.createRadialGradient(cx, frontY + hl * 0.18, 0, cx, frontY + hl * 0.18, hw * 1.35);
+      g.addColorStop(0, 'rgba(255, 254, 240, 0.5)');
+      g.addColorStop(0.4, 'rgba(255, 245, 200, 0.12)');
+      g.addColorStop(1, 'rgba(255, 235, 180, 0)');
+      return g;
+    };
+    ctx.fillStyle = hg(-hw * 0.52);
+    ctx.beginPath();
+    ctx.arc(-hw * 0.52, frontY + hl * 0.12, hw * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = hg(hw * 0.52);
+    ctx.beginPath();
+    ctx.arc(hw * 0.52, frontY + hl * 0.12, hw * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const sk = opt.speedKmh;
+  if (sk != null && sk > 4) {
+    const ra = Math.min(0.42, 0.12 + sk / 130);
+    ctx.fillStyle = `rgba(255, 45, 35, ${ra})`;
+    const rr = (x) => {
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, rearY - hl * 0.3, hw * 0.22, hl * 0.11, 1);
+      else ctx.rect(x, rearY - hl * 0.3, hw * 0.22, hl * 0.11);
+      ctx.fill();
+    };
+    rr(-hw * 0.48);
+    rr(hw * 0.26);
+  }
+
+  const ww = Math.max(2.8, cW * 0.24), wh = Math.max(2.2, cL * 0.12);
+  ctx.fillStyle = 'rgba(8, 8, 14, 0.96)';
+  const wr = (x, y) => {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, ww, wh, 1.2);
+    else ctx.rect(x, y, ww, wh);
+    ctx.fill();
+  };
+  wr(-hw - 0.2, frontY + hl * 0.26);
+  wr(hw - ww + 0.2, frontY + hl * 0.26);
+  wr(-hw - 0.2, rearY - hl * 0.38);
+  wr(hw - ww + 0.2, rearY - hl * 0.38);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+  ctx.lineWidth = 0.9 * z;
+  ctx.beginPath();
+  ctx.moveTo(-hw * 0.9, frontY + hl * 0.42);
+  ctx.lineTo(-hw * 0.9, rearY - hl * 0.28);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(hw * 0.9, frontY + hl * 0.42);
+  ctx.lineTo(hw * 0.9, rearY - hl * 0.28);
+  ctx.stroke();
+
+  _addCarSilhouettePath(ctx, vy, hw, hl);
+  if (opt.extraGlow) {
+    ctx.save();
+    ctx.shadowColor = opt.extraGlow;
+    ctx.shadowBlur = (opt.glowPx || 14) * z;
+    ctx.strokeStyle = opt.strokeStyle || 'rgba(255,255,255,0.65)';
+    ctx.lineWidth = (opt.lineWidth || 1.2) * z;
+    if (opt.dashed) ctx.setLineDash([3 * z, 3 * z]);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+  _addCarSilhouettePath(ctx, vy, hw, hl);
+  ctx.strokeStyle = opt.strokeStyle || 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = (opt.lineWidth || 1.05) * z;
+  if (opt.dashed) {
+    ctx.setLineDash([3 * z, 3 * z]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else {
+    ctx.stroke();
+  }
+}
+
+/** Jejak halus di belakang mobil (arah -X); murah — beberapa garis putus. */
+function drawLightMotionTrailWorld(ctx, wx, ly, speedKmh, zoom) {
+  const s = speedKmh || 0;
+  if (s < 12) return;
+  const t = Math.min(1, (s - 12) / 48);
+  const len = 14 + t * 32;
+  const a = 0.06 + t * 0.1;
+  const z = zoom || 1;
+  ctx.save();
+  ctx.strokeStyle = `rgba(120, 185, 255, ${a})`;
+  ctx.lineWidth = Math.max(0.75, 1.05 / z);
+  ctx.lineCap = 'round';
+  ctx.setLineDash([3 / z, 7 / z]);
+  for (let o = -8; o <= 8; o += 8) {
+    ctx.beginPath();
+    ctx.moveTo(wx - len, ly + o);
+    ctx.lineTo(wx - 3.5, ly + o);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+/** Jalan raya memanjang +X (tampak atas): bahu, aspal, marka, reflektor. */
+function drawHighwayRoad(ctx, rY, rH, numP, SHOULDER, LANE_W) {
+  const x0 = -50000, x1 = 50000, span = x1 - x0;
+
+  const verge = 100;
+  const g1 = ctx.createLinearGradient(0, rY - verge, 0, rY);
+  g1.addColorStop(0, 'rgba(8, 22, 14, 0.95)');
+  g1.addColorStop(1, 'rgba(12, 28, 18, 0.35)');
+  ctx.fillStyle = g1;
+  ctx.fillRect(x0, rY - verge, span, verge);
+  const g2 = ctx.createLinearGradient(0, rY + rH, 0, rY + rH + verge);
+  g2.addColorStop(0, 'rgba(12, 28, 18, 0.35)');
+  g2.addColorStop(1, 'rgba(8, 22, 14, 0.95)');
+  ctx.fillStyle = g2;
+  ctx.fillRect(x0, rY + rH, span, verge);
+
+  const ag = ctx.createLinearGradient(x0, rY, x0, rY + rH);
+  ag.addColorStop(0, '#14161c');
+  ag.addColorStop(0.15, '#1e222b');
+  ag.addColorStop(0.5, '#252a36');
+  ag.addColorStop(0.85, '#1e222b');
+  ag.addColorStop(1, '#14161c');
+  ctx.fillStyle = ag;
+  ctx.fillRect(x0, rY, span, rH);
+
+  for (let li = 0; li < numP; li++) {
+    const ly0 = rY + SHOULDER + li * LANE_W;
+    ctx.fillStyle = li % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.04)';
+    ctx.fillRect(x0, ly0, span, LANE_W);
+  }
+
+  ctx.fillStyle = '#0f1015';
+  ctx.fillRect(x0, rY, span, SHOULDER);
+  ctx.fillRect(x0, rY + rH - SHOULDER, span, SHOULDER);
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  for (let xx = x0; xx < x1; xx += 14) {
+    ctx.fillRect(xx, rY + 6, 6, 3);
+    ctx.fillRect(xx, rY + rH - SHOULDER + 6, 6, 3);
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.88)';
+  ctx.lineWidth = 2.2;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(x0, rY + SHOULDER);
+  ctx.lineTo(x1, rY + SHOULDER);
+  ctx.moveTo(x0, rY + rH - SHOULDER);
+  ctx.lineTo(x1, rY + rH - SHOULDER);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255, 220, 120, 0.78)';
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([22, 16]);
+  for (let li = 1; li < numP; li++) {
+    const ly = rY + SHOULDER + li * LANE_W;
+    ctx.beginPath();
+    ctx.moveTo(x0, ly);
+    ctx.lineTo(x1, ly);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  ctx.strokeStyle = 'rgba(200, 210, 230, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x0, rY);
+  ctx.lineTo(x1, rY);
+  ctx.moveTo(x0, rY + rH);
+  ctx.lineTo(x1, rY + rH);
+  ctx.stroke();
+
+  const step = 160;
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  for (let wx = x0; wx < x1; wx += step) {
+    ctx.fillRect(wx, rY + 3, 3, 5);
+    ctx.fillRect(wx, rY + rH - 8, 3, 5);
+  }
+
+  for (let li = 0; li < numP; li++) {
+    const ly = rY + SHOULDER + li * LANE_W + LANE_W / 2;
+    ctx.fillStyle = 'rgba(255,255,255,0.045)';
+    ctx.font = '900 22px Orbitron,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('P' + li, 0, ly);
+  }
+}
+
+/**
+ * Visual zona tikungan — strip sepanjang sumbu X [lo, hi] m (selaras backend).
+ */
+function drawCurveZoneVisual(ctx, rY, rH, numP, SHOULDER, LANE_W, curveStartM, curveEndM, zoom) {
+  const lo = Math.min(curveStartM, curveEndM);
+  const hi = Math.max(curveStartM, curveEndM);
+  const xL = lo * MSCALE;
+  const xR = hi * MSCALE;
+  const bandW = xR - xL;
+  if (bandW <= 0 || !isFinite(bandW)) return;
+
+  ctx.save();
+  const g = ctx.createLinearGradient(xL, 0, xR, 0);
+  g.addColorStop(0, 'rgba(255, 120, 40, 0.12)');
+  g.addColorStop(0.45, 'rgba(255, 200, 90, 0.2)');
+  g.addColorStop(0.55, 'rgba(255, 200, 90, 0.2)');
+  g.addColorStop(1, 'rgba(255, 120, 40, 0.12)');
+  ctx.fillStyle = g;
+  ctx.fillRect(xL, rY, bandW, rH);
+
+  ctx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+  ctx.lineWidth = 1.8;
+  ctx.setLineDash([10, 8]);
+  ctx.beginPath();
+  ctx.moveTo(xL, rY + 6);
+  ctx.lineTo(xL, rY + rH - 6);
+  ctx.moveTo(xR, rY + 6);
+  ctx.lineTo(xR, rY + rH - 6);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const midX = (xL + xR) / 2;
+  const bend = Math.min(28, LANE_W * 0.18);
+  ctx.strokeStyle = 'rgba(255, 220, 120, 0.72)';
+  ctx.lineWidth = 1.35;
+  ctx.setLineDash([20, 14]);
+  for (let li = 1; li < numP; li++) {
+    const ly = rY + SHOULDER + li * LANE_W;
+    ctx.beginPath();
+    ctx.moveTo(xL, ly);
+    ctx.quadraticCurveTo(midX, ly + bend, xR, ly);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  const s1 = 1 / (zoom || 1);
+  const midLy = rY + rH / 2;
+  ctx.save();
+  ctx.scale(s1, s1);
+  ctx.fillStyle = 'rgba(255, 230, 180, 0.95)';
+  ctx.font = '700 9px JetBrains Mono, Orbitron, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('ZONA TIKUNGAN', midX * zoom, (midLy - 12) * zoom);
+  ctx.fillStyle = 'rgba(160, 200, 255, 0.85)';
+  ctx.font = '600 7px JetBrains Mono, monospace';
+  ctx.fillText(`${lo}–${hi} m`, midX * zoom, (midLy + 10) * zoom);
+  ctx.restore();
+
+  ctx.restore();
+}
+
+// ════════════════════════════════════════════════════════════
+// SIMULATION STATE
+// ════════════════════════════════════════════════════════════
+let lastState  = null;
+let frameCount = 0;
+const ST_HIST  = 400;
+let stData     = {};
+const TARGET_FPS = 60;
+const FRAME_MS = 1000 / TARGET_FPS;
+
+// ════════════════════════════════════════════════════════════
+// GAME LOOP — update() then render() every frame
+// ════════════════════════════════════════════════════════════
+function update() {
+  if (!lastState) return;
+  const leader = lastState.vehicles.find(v => v.is_leader && v.platoon_id === 0);
+  if (!leader || isNaN(leader.position)) return;
+
+  if (document.getElementById('followLeader').checked) {
+    const lp = leader.position;
+    const disp = vehicleDisplayPos[leader.id];
+    const pFollow = (disp != null && isFinite(disp)) ? disp : lp;
+    const targX = camXForPosition(pFollow);
+    if (!cameraInitialized) {
+      camX = targX;
+      cameraInitialized = true;
+      dbg('Camera SNAPPED  leader.pos=' + leader.position.toFixed(1) + 'm  camX=' + camX.toFixed(1));
+    } else {
+      camX += (targX - camX) * 0.06;
+    }
+  }
+}
+
+function render() {
+  frameCount++;
+  if (frameCount % 60 === 0) {
+    dbg('Frame', frameCount, '| canvas', mc.width+'x'+mc.height, '| camX', camX.toFixed(1), '| camY', camY.toFixed(1), '| zoom', zoom.toFixed(2), '| state', lastState ? 'OK' : 'null');
+    if (lastState) dbg('Vehicles:', lastState.vehicles.map(v => 'V'+v.id+':'+v.position.toFixed(0)+'m').join(', '));
+  }
+
+  if (!lastState) { renderWaitScreen(); return; }
+  renderScene(lastState);
+  renderSpaceTime();
+
+  // On-screen debug overlay
+  if (document.getElementById('showDebug').checked && lastState) {
+    const ldr = lastState.vehicles.find(v => v.is_leader);
+    document.getElementById('dbgContent').innerHTML =
+      'Frame: ' + frameCount + '<br>' +
+      'Canvas: ' + mc.width + 'x' + mc.height + '<br>' +
+      'camY: ' + camY.toFixed(1) + '  camX: ' + camX.toFixed(1) + '<br>' +
+      'zoom: ' + zoom.toFixed(2) + '<br>' +
+      'Leader pos: ' + (ldr ? ldr.position.toFixed(1)+'m' : 'N/A') + '<br>' +
+      'Vehicles: ' + lastState.vehicles.length + '<br>' +
+      'Sim time: ' + lastState.time.toFixed(2) + 's';
+  }
+}
+
+function gameLoop() {
+  update();
+  render();
+}
+
+let _lastFrameTs = 0;
+let _frameRemainder = 0;
+function frameLimiterLoop(ts) {
+  if (!_lastFrameTs) _lastFrameTs = ts;
+  const elapsed = ts - _lastFrameTs;
+  _lastFrameTs = ts;
+  _frameRemainder += elapsed;
+
+  while (_frameRemainder >= FRAME_MS) {
+    gameLoop();
+    _frameRemainder -= FRAME_MS;
+  }
+  requestAnimationFrame(frameLimiterLoop);
+}
+
+function initGSAPAnimations() {
+  if (typeof gsap === 'undefined') return;
+  gsap.from('.nav', { y: -24, opacity: 0, duration: 0.6, ease: 'power2.out' });
+  gsap.from('.overlay .ol-badge', { y: 10, opacity: 0, duration: 0.5, ease: 'power2.out', stagger: 0.08, delay: 0.2 });
+  gsap.from('.panel .pbox', { x: 20, opacity: 0, duration: 0.45, ease: 'power2.out', stagger: 0.05, delay: 0.25 });
+  gsap.to('#startBtn', { scale: 1.05, duration: 0.8, repeat: -1, yoyo: true, ease: 'sine.inOut' });
+}
+
+// ════════════════════════════════════════════════════════════
+// ANTI-GRAVITY STAR FIELD
+// ════════════════════════════════════════════════════════════
+const _stars = Array.from({length:120},()=>({x:Math.random(),y:Math.random(),s:Math.random()*1.8+.3,a:Math.random()}));
+function drawStarField(W,H){
+  const t=Date.now()*.0003;
+  _stars.forEach(st=>{
+    const flicker=.4+.6*Math.sin(t*3+st.a*20);
+    ctx.fillStyle=`rgba(140,180,255,${flicker*.35})`;
+    ctx.beginPath();ctx.arc(st.x*W,st.y*H,st.s,0,Math.PI*2);ctx.fill();
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDER — WAIT SCREEN (Anti-Gravity)
+// ════════════════════════════════════════════════════════════
+function renderWaitScreen() {
+  const W = mc.width, H = mc.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#060612'; ctx.fillRect(0,0,W,H);
+  drawStarField(W,H);
+  // Floating grid
+  const t=Date.now()*.001;
+  ctx.strokeStyle='rgba(0,240,255,.04)'; ctx.lineWidth=1;
+  for(let gy=-50;gy<H+50;gy+=40){
+    const off=Math.sin(t+gy*.01)*8;
+    ctx.beginPath();ctx.moveTo(0,gy+off);ctx.lineTo(W,gy+off);ctx.stroke();
+  }
+  // Pulsing orb
+  const pulse=.5+.5*Math.sin(t*2);
+  const grd=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,120);
+  grd.addColorStop(0,`rgba(0,240,255,${.08*pulse})`);
+  grd.addColorStop(1,'transparent');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
+  // Title
+  ctx.fillStyle=`rgba(0,240,255,${.6+.4*pulse})`;
+  ctx.font='700 15px Orbitron,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.shadowColor='#00f0ff';ctx.shadowBlur=20;
+  ctx.fillText('▶  PRESS START TO LAUNCH SIMULATION',W/2,H/2-8);
+  ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(107,127,163,.6)';ctx.font='500 12px Rajdhani,sans-serif';
+  ctx.fillText('Anti-Gravity V2V Platooning Simulator',W/2,H/2+16);
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDER — MAIN SCENE
+// ════════════════════════════════════════════════════════════
+function renderScene(state) {
+  const W = mc.width, H = mc.height;
+  if (!W || !H) { dbgW('Canvas has zero dimensions'); return; }
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#060612'; ctx.fillRect(0,0,W,H);
+  drawStarField(W,H);
+
+  ctx.save();
+  ctx.translate(W/2 - camX, H/2 - camY);
+  ctx.scale(zoom, zoom);
+
+  const numP   = Math.max(2, lastState ? (new Set(lastState.vehicles.map(v=>v.platoon_id).filter(p=>p>=0))).size : 2);
+  const LANE_W = 150;
+  const SHOULDER= 50;
+  const rH     = numP * LANE_W + SHOULDER * 2;
+  const rY     = -rH / 2;
+  drawHighwayRoad(ctx, rY, rH, numP, SHOULDER, LANE_W);
+
+  const netEnv = (state.network && state.network.environment) || {};
+  const curveVisOn = !!(netEnv.curve_enabled || cfg.curve_enabled);
+  if (curveVisOn) {
+    let cs = (netEnv.curve_m && netEnv.curve_m[0] != null) ? netEnv.curve_m[0] : cfg.curve_start_m;
+    let ce = (netEnv.curve_m && netEnv.curve_m[1] != null) ? netEnv.curve_m[1] : cfg.curve_end_m;
+    drawCurveZoneVisual(ctx, rY, rH, numP, SHOULDER, LANE_W, cs, ce, zoom);
+  }
+
+  const AR = state.amplitude_ratios || {};
+  const sv = state.vehicles.slice().sort((a,b) => b.position - a.position);
+
+  const platoonIds = [...new Set(state.vehicles.map(v=>v.platoon_id).filter(p=>p>=0))].sort();
+  function laneY(pid) {
+    const idx = platoonIds.indexOf(pid);
+    const nP  = Math.max(2, platoonIds.length);
+    const LW = 150, SH = 50;
+    const rh = nP * LW + SH * 2;
+    return -rh / 2 + SH + idx * LW + LW / 2;
+  }
+  function posX(p) { return p * MSCALE; }
+
+  const aliveIds = new Set(state.vehicles.map(v => v.id));
+  Object.keys(vehicleDisplayPos).forEach(k => {
+    if (!aliveIds.has(+k)) delete vehicleDisplayPos[k];
+  });
+  const smoothedP = Object.create(null);
+  state.vehicles.forEach(v => {
+    if (isNaN(v.position)) return;
+    const tgt = v.position;
+    let d = vehicleDisplayPos[v.id];
+    if (d == null || !isFinite(d)) d = tgt;
+    else {
+      const diff = tgt - d;
+      const ad = Math.abs(diff);
+      let alpha = SMOOTH_POS_ALPHA;
+      if (ad > 18) alpha = 0.11;
+      if (ad > 48) alpha = 0.075;
+      if (ad > 100) alpha = 0.045;
+      if (ad > 200) alpha = 0.03;
+      d += diff * alpha;
+    }
+    vehicleDisplayPos[v.id] = d;
+    smoothedP[v.id] = d;
+  });
+
+  if (!state.cut_in) cutInDisplayPos = null;
+
+  // RSU infrastructure + OBU<->RSU links (visualization only)
+  const net = state.network || {};
+  const rsuEnabled = !!net.rsu_enabled;
+  const vehVisible = state.vehicles.filter(v => !isNaN(v.position) && v.platoon_id >= 0);
+  let rsuPosList = [];
+  if (rsuEnabled && vehVisible.length) {
+    const minP = Math.min(...vehVisible.map(v => v.position)) - 80;
+    const maxP = Math.max(...vehVisible.map(v => v.position)) + 80;
+    const rsuStep = 180; // metres between roadside RSUs
+    const startP = Math.floor(minP / rsuStep) * rsuStep;
+    for (let p = startP; p <= maxP; p += rsuStep) rsuPosList.push(p);
+  }
+  const rsuY = rY + rH - SHOULDER / 2;
+  rsuPosList.forEach(p => {
+    const x = posX(p);
+    ctx.strokeStyle = 'rgba(168,85,247,.65)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x - 14, rsuY);
+    ctx.lineTo(x + 14, rsuY);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(168,85,247,.9)';
+    ctx.beginPath();
+    ctx.arc(x + 16, rsuY, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    const s1 = 1 / zoom;
+    ctx.save();
+    ctx.scale(s1, s1);
+    ctx.fillStyle = 'rgba(200,160,255,.9)';
+    ctx.font = '700 7px JetBrains Mono,monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('RSU', (x + 18) * zoom, (rsuY + 4) * zoom);
+    ctx.restore();
+  });
+  if (rsuEnabled && rsuPosList.length) {
+    state.vehicles.forEach(v => {
+      if (v.platoon_id < 0 || isNaN(v.position)) return;
+      let nearest = rsuPosList[0];
+      let best = Math.abs(v.position - nearest);
+      for (let i = 1; i < rsuPosList.length; i++) {
+        const d = Math.abs(v.position - rsuPosList[i]);
+        if (d < best) { best = d; nearest = rsuPosList[i]; }
+      }
+      const vx = posX(smoothedP[v.id] ?? v.position);
+      const vy = laneY(v.platoon_id) - 8;
+      const rx = posX(nearest) + 16;
+      const ok = !!v.communication_ok;
+      ctx.strokeStyle = ok ? 'rgba(168,85,247,.35)' : 'rgba(255,51,85,.25)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.moveTo(vx, vy);
+      ctx.lineTo(rx, rsuY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  }
+
+  // Cut-in vehicle (heterogeneous traffic, same lane as P0)
+  if (state.cut_in && state.cut_in.platoon_id === 0 && platoonIds.indexOf(0) >= 0) {
+    const cp = state.cut_in.position;
+    if (cutInDisplayPos == null || !isFinite(cutInDisplayPos) || Math.abs(cp - cutInDisplayPos) > 150) cutInDisplayPos = cp;
+    else {
+      const dci = cp - cutInDisplayPos;
+      const ad = Math.abs(dci);
+      let a = SMOOTH_POS_ALPHA;
+      if (ad > 18) a = 0.1;
+      if (ad > 50) a = 0.06;
+      cutInDisplayPos += dci * a;
+    }
+    const iwx = posX(cutInDisplayPos);
+    const ily = laneY(0);
+    const cL = 24, cW = 16;
+    const cutSpd = state.cut_in.velocity_kmh != null
+      ? state.cut_in.velocity_kmh
+      : (state.cut_in.velocity || 0) * 3.6;
+    drawLightMotionTrailWorld(ctx, iwx, ily, cutSpd, zoom);
+    ctx.save();
+    ctx.translate(iwx, ily);
+    ctx.rotate(Math.PI / 2);
+    drawCarTopDown(ctx, 0, cW, cL, '#ed8936', {
+      zoomInv: 1 / zoom,
+      extraGlow: '#ed8936',
+      glowPx: 18,
+      strokeStyle: 'rgba(255,255,255,0.88)',
+      lineWidth: 1.35,
+      speedKmh: cutSpd
+    });
+    ctx.restore();
+    ctx.save();
+    ctx.translate(iwx, ily);
+    ctx.scale(1 / zoom, 1 / zoom);
+    ctx.fillStyle = '#ffb300';
+    ctx.font = '700 9px Orbitron,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CUT-IN', 0, cL / 2 + 14);
+    ctx.restore();
+  }
+
+  // V2V links — dalam lajur masing-masing platoon
+  // BUG-FIX: filter dulu kendaraan IN_TRANSIT (platoon_id < 0) agar link
+  // kendaraan belakang tidak terputus saat ada kendaraan IN_TRANSIT di tengah barisan.
+  const svLinked = sv.filter(v => v.platoon_id >= 0);
+  for (let i = 1; i < svLinked.length; i++) {
+    const f = svLinked[i], p = svLinked[i-1];
+    if (f.platoon_id !== p.platoon_id) continue;
+    const px = posX(smoothedP[p.id] ?? p.position), fx = posX(smoothedP[f.id] ?? f.position);
+    const ly = laneY(f.platoon_id) + 8;
+    const aoi = f.aoi_ms||0;
+    const lc = f.communication_ok
+      ? (aoi<50?'rgba(0,240,255,.5)':aoi<100?'rgba(255,179,0,.5)':'rgba(255,51,85,.4)')
+      : 'rgba(255,51,85,.15)';
+    ctx.shadowColor=f.communication_ok?'#00f0ff':'#ff3355';ctx.shadowBlur=f.communication_ok?6:0;
+    ctx.strokeStyle=lc; ctx.lineWidth=1; ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(fx,ly); ctx.lineTo(px,ly); ctx.stroke(); ctx.setLineDash([]);
+    ctx.shadowBlur=0;
+    if (f.communication_ok && Math.random()<0.06) {
+      const dot = fx + (px-fx)*((Date.now()%700)/700);
+      ctx.fillStyle=lc; ctx.beginPath(); ctx.arc(dot,ly,3,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  // Draw each vehicle (positioned in their platoon lane, or animated if in transit)
+  // v7: multi-phase rendering — DEPARTING | IN_TRANSIT | normal
+  state.vehicles.forEach(v => {
+    if (isNaN(v.position)) { dbgW('V'+v.id+' NaN position'); return; }
+    const wx = posX(smoothedP[v.id] ?? v.position);
+    const mPhase = v.maneuver_phase;
+
+    let ly = 0;
+    let inTransit    = false;
+    let isDeparting  = false;
+
+    if (mPhase === 'DEPARTING') {
+      ly = laneY(v.platoon_id);
+      isDeparting = true;
+      if (v.transit_target_pid !== null && v.transit_target_pid !== undefined) {
+        const targetY = laneY(v.transit_target_pid);
+        const srcY    = ly;
+        if (Math.abs(targetY - srcY) > 5) {
+          const pulse = 0.4 + 0.3 * Math.sin(Date.now() / 250);
+          ctx.save();
+          ctx.globalAlpha = pulse;
+          ctx.strokeStyle = '#f6ad55';
+          ctx.lineWidth   = 2 / zoom;
+          ctx.setLineDash([5 / zoom, 8 / zoom]);
+          ctx.beginPath();
+          ctx.moveTo(wx, srcY);
+          const my = (srcY + targetY) / 2;
+          ctx.quadraticCurveTo(wx + 60 / zoom, my, wx, targetY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#f6ad55';
+          const dir = Math.sign(targetY - srcY);
+          ctx.beginPath();
+          ctx.moveTo(wx, targetY);
+          ctx.lineTo(wx - 6 / zoom, targetY - dir * 10 / zoom);
+          ctx.lineTo(wx + 6 / zoom, targetY - dir * 10 / zoom);
+          ctx.closePath(); ctx.fill();
+          ctx.globalAlpha = 1.0;
+          ctx.restore();
+        }
+      }
+
+    } else if (mPhase === 'IN_TRANSIT') {
+      inTransit = true;
+      const srcPid    = v.transit_src_pid;
+      const targetPid = v.transit_target_pid;
+      const srcY0   = (srcPid    !== null && srcPid    !== undefined) ? laneY(srcPid)    : 0;
+      const destY2 = (targetPid !== null && targetPid !== undefined) ? laneY(targetPid) : 0;
+
+      if (!inTransitState[v.id]) {
+        inTransitState[v.id] = { srcY: srcY0, destY: destY2, startTime: Date.now(), duration: 3000 };
+      }
+      const its = inTransitState[v.id];
+      its.destY = destY2;
+      const elapsed = Math.min(1.0, (Date.now() - its.startTime) / its.duration);
+      const te = elapsed < 0.5 ? 4 * elapsed * elapsed * elapsed : 1 - Math.pow(-2 * elapsed + 2, 3) / 2;
+      ly = its.srcY + (its.destY - its.srcY) * te;
+
+      if (Math.abs(its.srcY - its.destY) > 5) {
+        ctx.save();
+        ctx.globalAlpha = 0.55 * (1 - elapsed * 0.5);
+        ctx.strokeStyle = '#00bcd4';
+        ctx.lineWidth   = 2 / zoom;
+        ctx.setLineDash([6 / zoom, 8 / zoom]);
+        ctx.beginPath();
+        ctx.moveTo(wx - 40 / zoom, its.srcY);
+        const my2 = (its.srcY + its.destY) / 2;
+        ctx.quadraticCurveTo(wx + 80 / zoom, my2, wx, its.destY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+      }
+
+    } else {
+      inTransitState[v.id] && delete inTransitState[v.id];
+      const destY = laneY(v.platoon_id);
+      ly = destY;
+      const tr = activeTransitions[v.id];
+      if (tr) {
+        const elapsed = (Date.now() - tr.startTime) / tr.duration;
+        if (elapsed >= 1.0) {
+          delete activeTransitions[v.id];
+        } else {
+          const te = elapsed < 0.5
+            ? 4 * elapsed * elapsed * elapsed
+            : 1 - Math.pow(-2 * elapsed + 2, 3) / 2;
+          tr.toY = destY;
+          ly = tr.fromY + (tr.toY - tr.fromY) * te;
+          inTransit = true;
+
+          if (Math.abs(tr.fromY - destY) > 5) {
+            ctx.save();
+            ctx.globalAlpha = 0.40 * (1 - elapsed);
+            ctx.strokeStyle = '#00bcd4';
+            ctx.lineWidth = 2 / zoom;
+            ctx.setLineDash([6 / zoom, 8 / zoom]);
+            ctx.beginPath();
+            ctx.moveTo(wx, tr.fromY);
+            const mx = wx + 80 / zoom;
+            const my = (tr.fromY + destY) / 2;
+            ctx.quadraticCurveTo(mx, my, wx, destY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1.0;
+            ctx.restore();
+          }
+        }
+      }
+    }
+
+    const vColor = vehicleColor(v, AR);
+    const cL = 24, cW = 16;
+    const zoomInv = 1 / zoom;
+    const spd = v.velocity_kmh || 0;
+
+    drawLightMotionTrailWorld(ctx, wx, ly, spd, zoom);
+
+    ctx.save();
+    ctx.translate(wx, ly);
+    ctx.rotate(Math.PI / 2);
+
+    let bodyHex = vColor;
+    if (mPhase === 'IN_TRANSIT') bodyHex = '#00e5ff';
+    else if (isDeparting) bodyHex = '#f6ad55';
+
+    const carOpt = { zoomInv, speedKmh: spd };
+    if (mPhase === 'IN_TRANSIT') {
+      Object.assign(carOpt, { extraGlow: '#00e5ff', glowPx: 22, dashed: true, strokeStyle: '#ffffff', lineWidth: 1.4 });
+    } else if (isDeparting) {
+      Object.assign(carOpt, { extraGlow: '#f6ad55', glowPx: 14, dashed: true, strokeStyle: '#ff8c00', lineWidth: 1.35 });
+    } else if (inTransit) {
+      Object.assign(carOpt, { extraGlow: '#00bcd4', glowPx: 18 });
+    }
+    if (v.is_leader && !mPhase) {
+      carOpt.extraGlow = '#00ffff';
+      carOpt.glowPx = Math.max(carOpt.glowPx || 0, 16);
+    }
+
+    drawCarTopDown(ctx, 0, cW, cL, bodyHex, carOpt);
+
+    if (v.collided) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = 2.2 * zoomInv;
+      ctx.beginPath();
+      ctx.moveTo(-cW / 2, -cL / 2);
+      ctx.lineTo(cW / 2, cL / 2);
+      ctx.moveTo(cW / 2, -cL / 2);
+      ctx.lineTo(-cW / 2, cL / 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(wx, ly);
+    ctx.scale(1 / zoom, 1 / zoom);
+    ctx.fillStyle='#e8ecf4'; ctx.font='700 10px Orbitron,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('V'+v.id, 0, -cL/2 - 8);
+    if (v.is_leader && !mPhase) { ctx.fillStyle='#ffd700'; ctx.fillText('\u{1F451}', cW/2+14, -cL/2-4); }
+    ctx.fillStyle = '#a855f7';
+    ctx.font='700 7px JetBrains Mono,monospace';
+    ctx.fillText('OBU', -(cW/2+14), cL/2 + 11);
+
+    if (mPhase === 'IN_TRANSIT') {
+      ctx.fillStyle='#00f0ff'; ctx.fillText('✈', -(cW/2+14), -cL/2-4);
+    } else if (isDeparting) {
+      ctx.fillStyle='#ffb300'; ctx.fillText('↗', -(cW/2+14), -cL/2-4);
+    } else if (inTransit) {
+      ctx.fillStyle='#00f0ff'; ctx.fillText('\u2708', -(cW/2+14), -cL/2-4);
+    }
+
+    const fsm = v.fsm_state || v.control_mode || 'CACC';
+    const fsmC = {CACC:'#00f0ff',DEGRADED:'#ffb300',ACC:'#a855f7',
+                  EMERGENCY:'#ff3355',LEADER:'#00f0ff',TRANSFER:'#ffb300',
+                  DEPARTING:'#ffb300',IN_TRANSIT:'#00f0ff'};
+    ctx.fillStyle = fsmC[mPhase] || fsmC[fsm] || '#00f0ff';
+    ctx.font='700 8px JetBrains Mono,monospace';
+    const fsmLabel = mPhase === 'DEPARTING' ? 'DEPART'
+                   : mPhase === 'IN_TRANSIT' ? 'TRANSIT'
+                   : inTransit ? 'TRANSIT'
+                   : fsm;
+    ctx.fillText(fsmLabel, 0, cL/2 + 12);
+
+    if (!v.is_leader) {
+      const se = v.spacing_error||0;
+      ctx.fillStyle=Math.abs(se)>5?'#ff3355':Math.abs(se)>2?'#ffb300':'#6b7fa3';
+      ctx.font='700 7px JetBrains Mono,monospace'; ctx.fillText('\u0394:'+se.toFixed(1)+'m', 0, cL/2+22);
+      const aoi=v.aoi_ms||0, barW=40, barH=3;
+      const barTop = -cL/2 - 12;
+      ctx.fillStyle='rgba(255,255,255,.05)'; ctx.fillRect(-barW/2, barTop, barW, barH);
+      const fillW = Math.min(1, aoi/600)*barW;
+      ctx.fillStyle=aoi<100?'#00f0ff':aoi<500?'#ffb300':'#ff3355';
+      ctx.fillRect(-barW/2, barTop, fillW, barH);
+    }
+    ctx.restore();
+  });
+
+  ctx.restore();
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDER — SPACE-TIME DIAGRAM
+// ════════════════════════════════════════════════════════════
+function renderSpaceTime() {
+  if (!showST || !lastState) return;
+  const W=stc.width, H=stc.height;
+  if (!W || !H) return;
+  stCtx.fillStyle='#060612'; stCtx.fillRect(0,0,W,H);
+  stCtx.fillStyle='rgba(0,240,255,.06)'; stCtx.fillRect(0,0,W,18);
+  stCtx.fillStyle='#6b7fa3'; stCtx.font='600 9px Rajdhani,sans-serif'; stCtx.textAlign='left';
+  stCtx.fillText('SPACE-TIME DIAGRAM',6,13);
+  const ids = [...new Set(Object.keys(stData).map(Number))];
+  if (!ids.length) return;
+  const allT=[],allP=[]; ids.forEach(id=>{ stData[id]?.forEach(p=>{allT.push(p.t);allP.push(p.y);}); });
+  if (!allT.length) return;
+  const tMin=Math.min(...allT),tMax=Math.max(...allT)||tMin+1;
+  const pMin=Math.min(...allP),pMax=Math.max(...allP)||pMin+1;
+  const tS=tMax-tMin||1, pS=pMax-pMin||1;
+  ids.forEach((id,i)=>{
+    const pts=stData[id]||[];
+    if (pts.length<2) return;
+    stCtx.strokeStyle=PALETTE[i%PALETTE.length]; stCtx.lineWidth=1.5;
+    stCtx.beginPath();
+    pts.forEach((p,k)=>{
+      const x=22+(p.t-tMin)/tS*(W-30), y=22+(1-(p.y-pMin)/pS)*(H-30);
+      k===0?stCtx.moveTo(x,y):stCtx.lineTo(x,y);
+    }); stCtx.stroke();
+    const last=pts[pts.length-1];
+    const lx=22+(last.t-tMin)/tS*(W-30), ly=22+(1-(last.y-pMin)/pS)*(H-30);
+    stCtx.fillStyle=PALETTE[i%PALETTE.length]; stCtx.font='8px Arial'; stCtx.textAlign='left';
+    stCtx.fillText('V'+id, Math.min(lx,W-20), Math.max(ly,12));
+  });
+  stCtx.strokeStyle='rgba(0,240,255,.15)'; stCtx.lineWidth=1;
+  stCtx.beginPath(); stCtx.moveTo(22,20); stCtx.lineTo(22,H-8); stCtx.lineTo(W-8,H-8); stCtx.stroke();
+  stCtx.fillStyle='#6b7fa3'; stCtx.font='600 8px Rajdhani,sans-serif';
+  stCtx.textAlign='left';  stCtx.fillText(tMin.toFixed(0)+'s',24,H-1);
+  stCtx.textAlign='right'; stCtx.fillText(tMax.toFixed(0)+'s',W-8,H-1);
+  stCtx.save(); stCtx.rotate(-Math.PI/2); stCtx.fillText('pos(m)',-H/2,12); stCtx.restore();
+}
+
+// ════════════════════════════════════════════════════════════
+// PANEL UI UPDATE
+// ════════════════════════════════════════════════════════════
+let latencyHistory=[], latencyMiniChart=null;
+
+function updatePanel(state) {
+  const AR=state.amplitude_ratios||{}, net=state.network;
+  const vehs = state.vehicles || [];
+  const obuCount = vehs.filter(v => v.platoon_id >= 0).length;
+  const followers = vehs.filter(v => !v.is_leader && v.platoon_id >= 0);
+  const v2vTotal = followers.length;
+  const v2vActive = followers.filter(v => !!v.communication_ok).length;
+  const rsuLinks = net.rsu_enabled ? obuCount : 0;
+  const maxAoI=state.max_aoi_ms||0, si=state.stability_index, ss=state.stability_status;
+  const siC=si>0.8?'#00ff88':si>0.5?'#ffb300':'#ff3355';
+  document.getElementById('siOverlay').innerHTML=`SI: <span style="color:${siC}">${si.toFixed(2)} — ${ss}</span>`;
+  document.getElementById('aoidOverlay').innerHTML=`Max AoI: <span style="color:${maxAoI<100?'#00ff88':maxAoI<500?'#f6ad55':'#f56565'}">${maxAoI.toFixed(0)}ms</span>`;
+  document.getElementById('pdrOverlay').innerHTML=`PDR: <span style="color:${net.pdr>95?'#00ff88':net.pdr>90?'#f6ad55':'#f56565'}">${net.pdr.toFixed(1)}%</span>`;
+  document.getElementById('topologyOverlay').textContent='Topology: '+(cfg.topology||'predecessor');
+  const env = (net && net.environment) ? net.environment : {};
+  let envTxt = 'Lingkungan: ';
+  if (env.curve_enabled) {
+    envTxt += env.in_curve ? '⚠ tikungan (link) ' : 'tikungan aktif ';
+    envTxt += `[${(env.curve_m && env.curve_m[0]) || '?'}–${(env.curve_m && env.curve_m[1]) || '?'}m] `;
+  } else envTxt += 'jalan lurus ';
+  if (env.rsu_relay && net.rsu_enabled) envTxt += '· RSU✓';
+  else if (net.rsu_enabled) envTxt += '· RSU siap';
+  else envTxt += '· RSU off';
+  document.getElementById('envOverlay').textContent = envTxt.trim();
+
+  const mTheory = document.getElementById('maneuverTheoryLine');
+  if (mTheory) {
+    const q = state.maneuver_queue || {};
+    const inTransferPh = v => v.maneuver_phase === 'DEPARTING' || v.maneuver_phase === 'IN_TRANSIT';
+    const tr = vehs.find(inTransferPh);
+    const repo = vehs.filter(v => v.repositioning);
+    let mtxt = '';
+    if (tr) {
+      mtxt = tr.maneuver_phase === 'DEPARTING'
+        ? `§4.3.2 DEPARTING — V${tr.id}: membuka jarak longitudinal (headway dinaikkan) di platoon sumber; belum pindah “fisik” ke tujuan.`
+        : `§4.3.3 IN_TRANSIT — V${tr.id}: platoon_id=−1 (limbo); menyamakan kecepatan menuju ekor platoon tujuan; lintas lajur divisualkan di canvas.`;
+    } else if (repo.length) {
+      mtxt = `Reposisi bertahap — ${repo.map(v => 'V' + v.id).join(', ')}: menuju slot longitudinal baru (swap leader §6.4 atau eks-leader ke ekor §5.2), bukan teleport.`;
+    } else if (q.queue_busy && (q.active_platoons || []).length) {
+      mtxt = `Teorema 4.1 — antre manuver: P${q.active_platoons.join(', P')} terkunci sampai operasi selesai.`;
+    }
+    if (mtxt) { mTheory.textContent = mtxt; mTheory.style.display = 'block'; }
+    else { mTheory.style.display = 'none'; mTheory.textContent = ''; }
+  }
+
+  document.getElementById('kSI').textContent=si.toFixed(2); document.getElementById('kSI').style.color=siC;
+  document.getElementById('kAoI').textContent=maxAoI.toFixed(0)+'ms'; document.getElementById('kAoI').style.color=maxAoI<100?'#00ff88':maxAoI<500?'#f6ad55':'#f56565';
+  document.getElementById('kPDR').textContent=net.pdr.toFixed(1)+'%';
+  const modes=[...new Set(state.vehicles.filter(v=>!v.is_leader).map(v=>v.fsm_state||'CACC'))];
+  const dom=modes.includes('EMERGENCY')?'EMRG':modes.includes('ACC')?'ACC':modes.includes('DEGRADED')?'DEG':'CACC';
+  document.getElementById('kMode').textContent=dom;
+  document.getElementById('kMode').style.color={EMRG:'#f56565',ACC:'#9f7aea',DEG:'#f6ad55',CACC:'#38b2ac'}[dom];
+  document.getElementById('vehicleCards').innerHTML=state.vehicles.map(v=>{
+    const fsm=v.fsm_state||'CACC';
+    const cls=v.collided?'collided':fsm==='TRANSFER'?'transfer-mode':fsm==='DEGRADED'?'degraded':fsm==='ACC'?'acc-mode':fsm==='EMERGENCY'?'emergency':'';
+    const ar=AR[v.id], arStr=ar!=null?ar.toFixed(2):'N/A', arC=ar==null?'#718096':ar<1?'#38b2ac':ar<1.2?'#f6ad55':'#f56565';
+    const aoi=v.aoi_ms||0, aoiC=aoi<100?'#38b2ac':aoi<500?'#f6ad55':'#f56565';
+    const se=v.spacing_error||0, seC=Math.abs(se)>5?'#f56565':Math.abs(se)>2?'#f6ad55':'#e2e8f0';
+    const cdl=v.transfer_cooldown||0;
+    return `<div class="veh-card ${cls}">
+      <div class="veh-head">
+        <span class="veh-id">${v.is_leader?'👑':''} V${v.id}${v.is_leader?' (Leader)':''} <span style="font-size:.65rem;color:#718096">P${v.platoon_id}</span></span>
+        <span class="fsm-badge fsm-${fsm}">${fsm}</span>
+      </div>
+      ${cdl>0?`<div class="cooldown-bar"><div class="cooldown-fill" style="width:${Math.min(100,cdl/2*100)}%" title="Cooldown: ${cdl.toFixed(1)}s tersisa"></div></div><div style="font-size:.6rem;color:#00bcd4;text-align:center;margin-bottom:2px">⏱ Cooldown ${cdl.toFixed(1)}s (h=1.5×normal)</div>`:''}
+      <div class="veh-metrics">
+        <div class="vm"><div class="vm-label">Speed km/h</div><div class="vm-val">${v.velocity_kmh.toFixed(1)}</div></div>
+        <div class="vm"><div class="vm-label">a_actual</div><div class="vm-val">${(v.a_actual||0).toFixed(2)}</div></div>
+        <div class="vm"><div class="vm-label">AR</div><div class="vm-val" style="color:${arC}">${arStr}</div></div>
+        ${!v.is_leader?`<div class="vm"><div class="vm-label">Δpos (m)</div><div class="vm-val" style="color:${seC}">${se.toFixed(2)}</div></div>
+        <div class="vm"><div class="vm-label">Integral</div><div class="vm-val" style="color:#a0aec0">${(v.integral_e||0).toFixed(3)}</div></div>
+        <div class="vm"><div class="vm-label">τact lag</div><div class="vm-val">${((v.a_actual||0)-(v.a_desired||0)).toFixed(2)}</div></div>
+        <div class="vm"><div class="vm-label">h adaptif</div><div class="vm-val" style="color:${(v.time_headway||0)>(v.time_headway_base||0.8)*1.05?'#f6ad55':'#e2e8f0'}">${(v.time_headway!=null?v.time_headway:v.time_headway_base||0.8).toFixed(2)}s</div></div>`:''}
+      </div>
+      ${!v.is_leader?`<div class="aoi-row"><span class="aoi-label">AoI</span><div class="aoi-bar-bg"><div class="aoi-bar-fill" style="width:${Math.min(100,aoi/600*100)}%;background:${aoiC}"></div></div><span class="aoi-val" style="color:${aoiC}">${aoi.toFixed(0)}ms</span></div>`:''}
+    </div>`;
+  }).join('');
+  const comp=net.delay_components||{};
+  document.getElementById('netMetrics').innerHTML=`
+    <div class="net-row"><span class="net-key">Avg Latency</span><span class="net-val" style="color:${net.avg_delay<20?'#00ff88':net.avg_delay<50?'#f6ad55':'#f56565'}">${net.avg_delay} ms</span></div>
+    <div class="net-row"><span class="net-key">Security Delay (ECDSA)</span><span class="net-val" style="color:#9f7aea">${net.security_delay_ms} ms ±${net.security_delay_std}ms</span></div>
+    <div class="net-row"><span class="net-key">PDR</span><span class="net-val">${net.pdr}%</span></div>
+    <div class="net-row"><span class="net-key">Pkts Sent/Rcvd/Lost</span><span class="net-val" style="font-size:.72rem">${net.packets_sent}/${net.packets_received}/${net.packets_lost}</span></div>
+    <div class="net-row"><span class="net-key">Slice</span><span class="net-val">${net.network_slicing}</span></div>
+    <div class="net-row"><span class="net-key">RSU</span><span class="net-val" style="color:${net.rsu_enabled?'#38b2ac':'#f56565'}">${net.rsu_enabled?'ON':'OFF'}</span></div>
+    <div class="net-row"><span class="net-key">Status</span><span class="net-val" style="color:${net.degraded?'#f56565':'#00ff88'}">${net.degraded?'⚠ DEGRADED':'✓ NORMAL'}</span></div>
+    <div class="net-row"><span class="net-key">OBU Nodes</span><span class="net-val" style="color:#a855f7">${obuCount}</span></div>
+    <div class="net-row"><span class="net-key">V2V Links Active</span><span class="net-val" style="color:${v2vActive===v2vTotal?'#38b2ac':'#f6ad55'}">${v2vActive}/${v2vTotal}</span></div>
+    <div class="net-row"><span class="net-key">OBU ↔ RSU Links</span><span class="net-val" style="color:${net.rsu_enabled?'#a855f7':'#718096'}">${net.rsu_enabled?`${rsuLinks} active`:'OFF'}</span></div>
+    ${(net.environment && net.environment.curve_enabled) ? `<div class="net-row"><span class="net-key">Zona tikungan</span><span class="net-val">${(net.environment.in_curve?'⚠ link di tikungan':'lurus')} ${JSON.stringify(net.environment.curve_m||[])}</span></div>` : ''}
+    ${(net.environment && net.rsu_enabled) ? `<div class="net-row"><span class="net-key">Relay RSU (link terakhir)</span><span class="net-val" style="color:${net.environment.rsu_relay?'#38b2ac':'#718096'}">${net.environment.rsu_relay?'aktif':'tidak'}</span></div>` : ''}`;
+  const totD=(comp.network||net.avg_delay)+(comp.security||3), nPct=totD>0?(comp.network||net.avg_delay)/totD*100:50;
+  document.getElementById('delayBreakdown').innerHTML=`
+    <div class="delay-bar"><div class="db-net" style="width:${nPct.toFixed(0)}%"></div><div class="db-sec" style="width:${(100-nPct).toFixed(0)}%"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:.7rem">
+      <span style="color:#38b2ac">📡 Net: ${(comp.network||net.avg_delay).toFixed(1)}ms</span>
+      <span style="color:#9f7aea">🔐 ECDSA: ${(comp.security||3).toFixed(1)}ms</span>
+    </div>`;
+  const ll=net.link_latency||{};
+  document.getElementById('perLinkLatency').innerHTML=Object.keys(ll).length
+    ?Object.entries(ll).map(([k,v])=>`<div class="net-row"><span class="net-key">V${k} link</span><span class="net-val" style="color:${v<20?'#38b2ac':v<50?'#f6ad55':'#f56565'}">${v} ms</span></div>`).join('')
+    :'<div style="color:#718096;font-size:.78rem">No link data yet.</div>';
+  latencyHistory.push(net.avg_delay);
+  if (latencyHistory.length>80) latencyHistory.shift();
+  if (latencyMiniChart) {
+    latencyMiniChart.data.labels=latencyHistory.map((_,i)=>i);
+    latencyMiniChart.data.datasets[0].data=latencyHistory;
+    latencyMiniChart.update('none');
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB SWITCH — BUG-5 FIX: explicit event parameter
+// ════════════════════════════════════════════════════════════
+function showPTab(ev, id) {
+  document.querySelectorAll('.ptab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  ev.currentTarget.classList.add('active');
+}
+
+function logEvent(msg, color='#a0aec0') {
+  dbg('Event:', msg);
+  const log=document.getElementById('eventLog');
+  const e=document.createElement('div');
+  e.style.cssText=`padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);color:${color}`;
+  e.textContent=msg; log.prepend(e);
+  while (log.children.length>30) log.removeChild(log.lastChild);
+}
+
+// ════════════════════════════════════════════════════════════
+// SOCKET HANDLERS
+// ════════════════════════════════════════════════════════════
+socket.on('connect',        ()  => {
+  dbg('Socket connected'); logEvent('🟢 Connected to server','#00ff88');
+  // AUTO-START: jika config datang dari halaman Configure, langsung mulai simulasi
+  if (sessionStorage.getItem('simulationConfig')) {
+    dbg('Auto-starting simulation from sessionStorage config');
+    setTimeout(() => {
+      socket.emit('start_simulation', {config: cfg});
+      sessionStorage.removeItem('simulationConfig'); // hapus agar refresh tidak re-trigger
+    }, 300);
+  }
+});
+socket.on('disconnect',     (r) => { dbgW('Disconnected:',r); logEvent('🔴 Disconnected: '+r,'#f56565'); });
+socket.on('connect_error',  (e) => { dbgW('Connect error:',e.message); logEvent('⚠ Connect error: '+e.message,'#f6ad55'); });
+
+socket.on('simulation_started', d => {
+  dbg('Simulation started:', d);
+  document.getElementById('startBtn').style.display='none';
+  document.getElementById('stopBtn').style.display='inline-block';
+  const seed = d.random_seed_used != null ? ' | seed=' + d.random_seed_used : '';
+  logEvent('▶ Simulation started' + seed,'#00ff88');
+  cameraInitialized=false; stData={}; latencyHistory=[];
+  vehicleDisplayPos = Object.create(null);
+  cutInDisplayPos = null;
+});
+
+socket.on('simulation_stopped', d => {
+  dbg('Simulation stopped:', d);
+  document.getElementById('startBtn').style.display='inline-block';
+  document.getElementById('stopBtn').style.display='none';
+  logEvent('■ Stopped — '+d.experiment_id,'#f6ad55');
+  setTimeout(()=>window.location.href='/analysis',1200);
+});
+
+socket.on('disturbance_injected', d => { dbg('Disturbance:',d.type); logEvent('⚡ Disturbance: '+d.type,'#f6ad55'); });
+
+socket.on('state_update', state => {
+  if (!state || !Array.isArray(state.vehicles) || !state.vehicles.length) {
+    dbgW('Invalid state_update payload:', state); return;
+  }
+
+  // ── DETECT PLATOON CHANGES → start lane-change animation ──
+  const newPids = [...new Set(state.vehicles.map(v=>v.platoon_id).filter(p=>p>=0))].sort();
+  function newLaneY(pid) {
+    const idx = newPids.indexOf(pid);
+    const nP  = Math.max(2, newPids.length);
+    const LW  = 150, SH = 50;
+    const rH  = nP * LW + SH * 2;
+    return -rH/2 + SH + idx * LW + LW / 2;
+  }
+  state.vehicles.forEach(v => {
+    const prev = prevPlatoonIds[v.id];
+    if (prev !== undefined && prev !== v.platoon_id
+        && v.platoon_id !== -1 && prev !== -1) {
+      const fromY = newLaneY(prev);
+      const toY   = newLaneY(v.platoon_id);
+      if (!activeTransitions[v.id]) {
+        activeTransitions[v.id] = {
+          fromY,
+          toY,
+          startTime: Date.now(),
+          duration:  1400,
+        };
+        dbg(`Transition started V${v.id}: P${prev}→P${v.platoon_id} fromY=${fromY.toFixed(0)} toY=${toY.toFixed(0)}`);
+      }
+    }
+    prevPlatoonIds[v.id] = v.platoon_id;
+  });
+  // ──────────────────────────────────────────────────────────
+
+  lastState = state;
+  document.getElementById('simTime').textContent = state.time.toFixed(1)+'s';
+  state.vehicles.forEach(v => {
+    if (isNaN(v.position)) return;
+    if (!stData[v.id]) stData[v.id]=[];
+    stData[v.id].push({t:state.time, y:v.position});
+    if (stData[v.id].length>ST_HIST) stData[v.id].shift();
+  });
+  updatePanel(state);
+
+  // Platoon info auto-refresh (merged from duplicate handler)
+  _platoonRefreshTimer++;
+  if (_platoonRefreshTimer % 300 === 0) {
+    refreshPlatoonInfo();
+  }
+  // Update queue status from state_update payload
+  if (state.maneuver_queue) {
+    const q = state.maneuver_queue;
+    const qEl = document.getElementById('queueStatusBadge');
+    const aEl = document.getElementById('queueActivePlatoons');
+    if (qEl && aEl) {
+      if (q.queue_busy) {
+        qEl.innerHTML = `<span class="queue-badge queue-busy">⚡ Manuver Aktif: P${q.active_platoons.join(', P')}</span>`;
+        aEl.textContent = `Teorema 4.1: Platoon ${q.active_platoons.map(p=>'P'+p).join(', ')} terkunci`;
+      } else {
+        qEl.innerHTML = '<span class="queue-badge queue-free">✓ Bebas — tidak ada manuver aktif</span>';
+        aEl.textContent = '';
+      }
+    }
+  }
+});
+
+socket.on('collision_detected', d => {
+  dbgW('Collision at t=', d.time);
+  const a=document.getElementById('collisionAlert');
+  a.style.display='block'; a.textContent=`💥 COLLISION — t=${d.time.toFixed(2)}s`;
+  logEvent(`💥 COLLISION t=${d.time.toFixed(2)}s — ${d.collision.cause}`,'#f56565');
+  setTimeout(()=>a.style.display='none',4000);
+});
+
+// ════════════════════════════════════════════════════════════
+// BUTTON HANDLERS
+// ════════════════════════════════════════════════════════════
+document.getElementById('startBtn').addEventListener('click', () => {
+  dbg('START clicked — emitting start_simulation', cfg);
+  socket.emit('start_simulation', {config:cfg});
+});
+document.getElementById('stopBtn').addEventListener('click', () => {
+  dbg('STOP clicked');
+  socket.emit('stop_simulation');
+});
+function disturbance(type) { dbg('Disturbance:',type); socket.emit('inject_disturbance',{type}); }
+
+// (Duplicate functions removed — see Protocol-Compliant v6.0 section below)
+
+// ════════════════════════════════════════════════════════════
+// PLATOON MANAGEMENT — Protocol-Compliant v6.0
+// Ref: §4 Transfer, §5 Promosi, §6 Swap, §7.5 ManeuverQueue
+// ════════════════════════════════════════════════════════════
+function addPlatoon() {
+  const n = parseInt(document.getElementById('newPlatoonVehicles').value) || 3;
+  socket.emit('add_platoon', {n_vehicles: n, config: cfg});
+  logEvent(`Menambahkan platoon baru (${n} kendaraan)...`, '#38b2ac');
+}
+
+// Precondition validators (call socket validate_maneuver)
+function validateSwap() {
+  const pa = document.getElementById('swapPlatoonA').value;
+  const pb = document.getElementById('swapPlatoonB').value;
+  const el = document.getElementById('swapPrecond');
+  const siEl = document.getElementById('swapSpeedInfo');
+  if (!pa || !pb) { el.innerHTML=''; siEl.innerHTML=''; return; }
+  socket.emit('validate_maneuver', {type:'swap', params:{platoon_id_a:parseInt(pa), platoon_id_b:parseInt(pb)}});
+}
+
+function validatePromote() {
+  const pid = document.getElementById('promotePlatoon').value;
+  const el = document.getElementById('promotePrecond');
+  if (!pid) { el.innerHTML=''; return; }
+  socket.emit('validate_maneuver', {type:'promote', params:{platoon_id:parseInt(pid)}});
+}
+
+function validateTransfer() {
+  const vid  = document.getElementById('transferVehicleId').value;
+  const tpid = document.getElementById('transferTargetPlatoon').value;
+  const el   = document.getElementById('transferPrecond');
+  if (!vid || !tpid) { el.innerHTML=''; return; }
+  socket.emit('validate_maneuver', {type:'transfer', params:{vehicle_id:parseInt(vid), target_platoon_id:parseInt(tpid)}});
+}
+
+socket.on('maneuver_validation', d => {
+  const cls = d.valid ? 'precond-ok' : 'precond-err';
+  const icon = d.valid ? '✓' : '✗';
+  const html = `<span class="${cls}">${icon} ${d.reason}</span>`;
+  if (d.type === 'swap') {
+    document.getElementById('swapPrecond').innerHTML = html;
+    if (d.valid && d.vel_a_kmh !== undefined) {
+      const dvC = d.vel_diff_ms < 2 ? '#00ff88' : d.vel_diff_ms < 4 ? '#f6ad55' : '#f56565';
+      document.getElementById('swapSpeedInfo').innerHTML =
+        `S6: vA=<span>${d.vel_a_kmh} km/h</span> vB=<span>${d.vel_b_kmh} km/h</span> Δv=<span style="color:${dvC}">${(d.vel_diff_ms*3.6).toFixed(1)} km/h</span>`;
+    } else {
+      document.getElementById('swapSpeedInfo').innerHTML='';
+    }
+  } else if (d.type === 'promote') {
+    document.getElementById('promotePrecond').innerHTML = html;
+  } else if (d.type === 'transfer') {
+    document.getElementById('transferPrecond').innerHTML = html;
+  }
+});
+
+function transferVehicle() {
+  const vid  = document.getElementById('transferVehicleId').value;
+  const tpid = document.getElementById('transferTargetPlatoon').value;
+  if (!vid || !tpid) { alert('Pilih kendaraan dan platoon tujuan terlebih dahulu!'); return; }
+  socket.emit('transfer_vehicle', {vehicle_id: parseInt(vid), target_platoon_id: parseInt(tpid)});
+  logEvent(`[§4 Transfer] V${vid} → Platoon ${tpid} (C1-C6 validation on server)`, '#9f7aea');
+}
+
+function swapLeaders() {
+  const pa = document.getElementById('swapPlatoonA').value;
+  const pb = document.getElementById('swapPlatoonB').value;
+  if (!pa || !pb) { alert('Pilih dua platoon yang berbeda!'); return; }
+  if (pa === pb)  { alert('Platoon harus berbeda!'); return; }
+  socket.emit('swap_leaders', {platoon_id_a: parseInt(pa), platoon_id_b: parseInt(pb)});
+  logEvent(`[§6 Swap] Leader P${pa} ⇆ P${pb} (S1-S6 validation on server)`, '#00ff88');
+}
+
+function promoteLeader() {
+  const pid = document.getElementById('promotePlatoon').value;
+  if (!pid) { alert('Pilih platoon!'); return; }
+  socket.emit('promote_leader', {platoon_id: parseInt(pid)});
+  logEvent(`[§5 Promote] Leader baru di Platoon ${pid} (Prop 5.1 validation on server)`, '#f6ad55');
+}
+
+function refreshPlatoonInfo() {
+  socket.emit('request_platoon_info');
+}
+
+// Protocol FSM Visualizer
+function renderFSMVisualizer(platoons) {
+  const el = document.getElementById('fsmVisualizer');
+  if (!platoons || !platoons.length) { el.innerHTML='<span style="color:#718096">Tidak ada platoon aktif.</span>'; return; }
+  const states = ['CACC','DEGRADED','ACC','TRANSFER','EMERGENCY'];
+  const stateColors = {CACC:'#38b2ac',DEGRADED:'#f6ad55',ACC:'#9f7aea',TRANSFER:'#00bcd4',EMERGENCY:'#f56565',LEADER:'#00ffff'};
+  let html = '';
+  platoons.forEach(pl => {
+    const byState = {};
+    pl.vehicles.forEach(v => {
+      const s = v.reported_state || v.fsm_state || 'CACC';
+      if (!byState[s]) byState[s] = 0;
+      byState[s]++;
+    });
+    html += `<div style="margin-bottom:8px;padding:6px;background:rgba(0,0,0,.3);border-radius:6px;border-left:2px solid #38b2ac">
+      <div style="font-weight:700;color:#00ff88;margin-bottom:4px;font-size:.72rem">P${pl.platoon_id} — ${pl.vehicles.length} kend. | ${pl.avg_speed_kmh||0} km/h
+        ${pl.in_maneuver?'<span style="color:#f56565;font-size:.6rem"> ⚡ Manuver Aktif</span>':''}
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${Object.entries(byState).map(([s,n])=>`<span style="background:${stateColors[s]||'#718096'}22;color:${stateColors[s]||'#718096'};border:1px solid ${stateColors[s]||'#718096'}44;padding:1px 6px;border-radius:3px;font-size:.62rem">${s}:${n}</span>`).join('')}
+      </div>
+      <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">
+        ${pl.vehicles.map(v=>{
+          const s = v.reported_state||v.fsm_state||'CACC';
+          const cd = v.transfer_cooldown||0;
+          return `<span title="V${v.id} | ${v.velocity_kmh} km/h${cd>0?' | Cooldown:'+cd.toFixed(1)+'s':''}" style="cursor:help;padding:1px 5px;background:rgba(0,0,0,.4);border:1px solid ${stateColors[s]||'#718096'}55;border-radius:3px;color:${stateColors[s]||'#718096'};font-size:.6rem">${v.is_leader?'👑':''}V${v.id}${cd>0?' ⏱'+cd.toFixed(0)+'s':''}</span>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function updateTransferDropdowns(platoons) {
+  const vSel  = document.getElementById('transferVehicleId');
+  const pSel  = document.getElementById('transferTargetPlatoon');
+  const swapA = document.getElementById('swapPlatoonA');
+  const swapB = document.getElementById('swapPlatoonB');
+  const prom  = document.getElementById('promotePlatoon');
+  const prevV = vSel.value, prevP = pSel.value;
+  const prevA = swapA.value, prevB = swapB.value, prevPr = prom.value;
+
+  vSel.innerHTML  = '<option value="">-- Pilih kendaraan --</option>';
+  pSel.innerHTML  = '<option value="">-- Pilih platoon --</option>';
+  swapA.innerHTML = '<option value="">-- Pilih --</option>';
+  swapB.innerHTML = '<option value="">-- Pilih --</option>';
+  prom.innerHTML  = '<option value="">-- Pilih platoon --</option>';
+
+  platoons.forEach(pl => {
+    const spd = pl.avg_speed_kmh || 0;
+    const opt = `<option value="${pl.platoon_id}">P${pl.platoon_id} (${pl.vehicles.length} kend. | ${spd} km/h)</option>`;
+    pSel.innerHTML  += opt;
+    swapA.innerHTML += opt;
+    swapB.innerHTML += opt;
+    prom.innerHTML  += opt;
+    pl.vehicles.forEach(v => {
+      if (!v.is_leader && !v.collided) {
+        const cdStr = v.transfer_cooldown > 0 ? ` [cooldown ${v.transfer_cooldown.toFixed(1)}s]` : '';
+        vSel.innerHTML += `<option value="${v.id}"${v.transfer_cooldown>0?' disabled':''}>V${v.id} (P${pl.platoon_id}) ${v.velocity_kmh}km/h${cdStr}</option>`;
+      }
+    });
+  });
+
+  if (prevV)  vSel.value  = prevV;
+  if (prevP)  pSel.value  = prevP;
+  if (prevA)  swapA.value = prevA;
+  if (prevB)  swapB.value = prevB;
+  if (prevPr) prom.value  = prevPr;
+}
+
+function renderPlatoonStatus(platoons) {
+  const el = document.getElementById('platoonStatusList');
+  if (!platoons || platoons.length === 0) {
+    el.innerHTML = '<div style="color:#718096">Tidak ada platoon aktif.</div>';
+    return;
+  }
+  const stateColors = {CACC:'#38b2ac',DEGRADED:'#f6ad55',ACC:'#9f7aea',TRANSFER:'#00bcd4',EMERGENCY:'#f56565',LEADER:'#00ffff'};
+  el.innerHTML = platoons.map(pl => `
+    <div style="background:rgba(0,0,0,.35);border-radius:7px;padding:8px;margin-bottom:7px;border-left:3px solid ${pl.in_maneuver?'#f56565':'#38b2ac'}">
+      <div style="font-weight:700;color:#00ff88;margin-bottom:4px;font-size:.72rem">
+        Platoon ${pl.platoon_id}
+        <span style="font-size:.65rem;color:#718096;font-weight:400">${pl.vehicles.length} kend. | ${pl.avg_speed_kmh||0} km/h</span>
+        ${pl.in_maneuver ? '<span style="color:#f56565;font-size:.6rem;margin-left:4px">⚡ MANUVER</span>' : ''}
+      </div>
+      ${pl.vehicles.map(v => {
+        const s = v.reported_state||v.fsm_state||'CACC';
+        const cdl = v.transfer_cooldown||0;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.68rem">
+          <span style="color:${v.is_leader?'#00ffff':'#a0b4ff'}">${v.is_leader?'👑':'•'} V${v.id}${v.collided?' 💥':''}</span>
+          <span style="color:#718096">${v.velocity_kmh} km/h</span>
+          <span style="color:${stateColors[s]||'#718096'}">${s}${cdl>0?` ⏱${cdl.toFixed(1)}s`:''}</span>
+          <span style="color:#718096;font-size:.6rem">${v.aoi_ms!=null?v.aoi_ms.toFixed(0)+'ms':''}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  `).join('');
+
+  // Update queue status
+  const qEl = document.getElementById('queueStatusBadge');
+  const activeEl = document.getElementById('queueActivePlatoons');
+  const busy = platoons.some(pl => pl.in_maneuver);
+  const activePlatoons = platoons.filter(pl => pl.in_maneuver).map(pl => `P${pl.platoon_id}`);
+  qEl.innerHTML = busy
+    ? `<span class="queue-badge queue-busy">⚡ Manuver Aktif: ${activePlatoons.join(', ')}</span>`
+    : `<span class="queue-badge queue-free">✓ Bebas — tidak ada manuver aktif</span>`;
+  activeEl.textContent = busy ? `Teorema 4.1: Platoon lain tidak bisa manuver bersamaan dengan ${activePlatoons.join(', ')}` : '';
+
+  // Update FSM visualizer
+  renderFSMVisualizer(platoons);
+}
+
+function addTransferLog(msg, color='#a0b4ff') {
+  const log = document.getElementById('transferLog');
+  const e   = document.createElement('div');
+  const ts  = new Date().toLocaleTimeString();
+  e.style.cssText = `padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);color:${color}`;
+  e.textContent = `[${ts}] ${msg}`;
+  log.prepend(e);
+  while (log.children.length > 30) log.removeChild(log.lastChild);
+}
+
+// Socket listeners untuk platoon management
+socket.on('platoon_added', d => {
+  dbg('Platoon added:', d);
+  logEvent(`Platoon ${d.platoon_id} ditambah — ${d.n_vehicles} kendaraan`, '#38b2ac');
+  addTransferLog(`[NEW-01] Platoon ${d.platoon_id} dibuat, leader V${d.leader_id}`, '#38b2ac');
+  refreshPlatoonInfo();
+});
+
+socket.on('transfer_phase_update', d => {
+  dbg('Transfer phase update:', d);
+  const phaseEmoji = d.phase === 'DEPARTING' ? '↗' : '✈';
+  logEvent(`${phaseEmoji} V${d.vehicle_id} [${d.phase}]: P${d.from_platoon}→P${d.to_platoon}`, '#f6ad55');
+  addTransferLog(`[§4 ${d.phase}] V${d.vehicle_id}: P${d.from_platoon}→P${d.to_platoon}`, '#f6ad55');
+});
+
+socket.on('vehicle_transferred', d => {
+  dbg('Vehicle transferred:', d);
+  if (d.phase === 'DEPARTING') {
+    logEvent(`↗ V${d.vehicle_id} mulai transfer: P${d.from_platoon}→P${d.to_platoon} [DEPARTING...]`, '#f6ad55');
+    addTransferLog(`[§4 DEPARTING] V${d.vehicle_id}: P${d.from_platoon}→P${d.to_platoon}`, '#f6ad55');
+  } else {
+    logEvent(`✅ V${d.vehicle_id}: P${d.from_platoon}→P${d.to_platoon} [COMPLETE] | cooldown 2s aktif`, '#9f7aea');
+    addTransferLog(`[§4 COMPLETE] V${d.vehicle_id}: P${d.from_platoon}→P${d.to_platoon}`, '#9f7aea');
+    refreshPlatoonInfo();
+    document.getElementById('transferPrecond').innerHTML='';
+  }
+});
+
+socket.on('leaders_swapped', d => {
+  dbg('Leaders swapped:', d);
+  logEvent(`[§6] Swap COMPLETE: P${d.platoon_a}(→V${d.new_leader_a}) ⇆ P${d.platoon_b}(→V${d.new_leader_b}) | Δv=${d.vel_diff_ms||'?'}m/s`, '#00ff88');
+  addTransferLog(`[§6 Swap COMPLETE] P${d.platoon_a}⇆P${d.platoon_b} | newA:V${d.new_leader_a} newB:V${d.new_leader_b}`, '#00ff88');
+  refreshPlatoonInfo();
+  document.getElementById('swapPrecond').innerHTML='';
+  document.getElementById('swapSpeedInfo').innerHTML='';
+});
+
+socket.on('leader_promoted', d => {
+  dbg('Leader promoted:', d);
+  logEvent(`[§5] Promosi COMPLETE: P${d.platoon_id} V${d.old_leader_id}→ekor, V${d.new_leader_id}→leader`, '#f6ad55');
+  addTransferLog(`[§5 Promote COMPLETE] P${d.platoon_id}: V${d.old_leader_id}→ekor, V${d.new_leader_id}→leader`, '#f6ad55');
+  refreshPlatoonInfo();
+  document.getElementById('promotePrecond').innerHTML='';
+});
+
+socket.on('emergency_promotion', d => {
+  dbg('Emergency promotion!', d);
+  logEvent(`[§5.5 EMERGENCY] P${d.platoon_id}: V${d.old_leader} diam, V${d.new_leader} ambil alih! AoI=${d.trigger_aoi_ms}ms`, '#ff5722');
+  addTransferLog(`[§5.5 EMRG PROMOTE] P${d.platoon_id}: V${d.new_leader} jadi leader darurat | AoI=${d.trigger_aoi_ms}ms`, '#ff5722');
+  const alert = document.getElementById('emergencyPromoAlert');
+  alert.textContent = `⚡ EMERGENCY PROMOTION! P${d.platoon_id}: V${d.new_leader} jadi leader (AoI=${d.trigger_aoi_ms}ms)`;
+  alert.style.display = 'block';
+  setTimeout(() => alert.style.display = 'none', 5000);
+  refreshPlatoonInfo();
+});
+
+socket.on('leader_error', d => {
+  logEvent('⚠ Leader op gagal: ' + (d.error || JSON.stringify(d)), '#f56565');
+  addTransferLog('✗ Gagal: ' + (d.error || JSON.stringify(d)), '#f56565');
+});
+
+socket.on('platoon_error', d => {
+  logEvent('⚠ Platoon error: ' + d.error, '#f56565');
+  addTransferLog('✗ Error: ' + d.error, '#f56565');
+});
+
+socket.on('transfer_error', d => {
+  logEvent('⚠ Transfer gagal: ' + (d.error || JSON.stringify(d)), '#f56565');
+  addTransferLog('✗ Gagal: ' + (d.error || JSON.stringify(d)), '#f56565');
+});
+
+socket.on('platoon_info', d => {
+  dbg('Platoon info:', d);
+  if (d.platoons) {
+    renderPlatoonStatus(d.platoons);
+    updateTransferDropdowns(d.platoons);
+    renderFSMVisualizer(d.platoons);
+  }
+});
+
+// Auto-refresh platoon info — merged into main state_update handler above
+let _platoonRefreshTimer = 0;
+
+// ════════════════════════════════════════════════════════════
+// INIT — BUG-3 FIX: start render loop ONLY after window.load
+// (canvas dimensions are 0 before DOM is fully painted)
+// ════════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  dbg('window.load — initialising canvas and starting game loop');
+  resizeCanvas(); resizeST();
+  dbg('Canvas after resize:', mc.width+'x'+mc.height);
+  initGSAPAnimations();
+
+  Chart.defaults.color='#718096';
+  latencyMiniChart=new Chart(document.getElementById('latencyMiniChart'),{
+    type:'line',
+    data:{labels:[],datasets:[{label:'Latency',data:[],borderColor:'#9f7aea',borderWidth:1.5,
+      backgroundColor:'rgba(159,114,234,.1)',fill:true,tension:0.3,pointRadius:0}]},
+    options:{responsive:true,animation:{duration:0},
+      plugins:{legend:{display:false}},
+      scales:{x:{display:false},y:{min:0,ticks:{color:'#718096',font:{size:9}}}}}
+  });
+
+  requestAnimationFrame(frameLimiterLoop);   // force 60 FPS simulation/render pacing
+  dbg('Game loop started. Waiting for simulation.');
+
+  // BUG6-FIX: ResizeObserver — canvas mengikuti ukuran container saat window di-resize
+  const canvasArea = document.querySelector('.canvas-area');
+  if (canvasArea && typeof ResizeObserver !== 'undefined') {
+    const stWrap = document.getElementById('stWrap');
+    const resizeObs = new ResizeObserver(() => {
+      const rect = canvasArea.getBoundingClientRect();
+      const stH = showST ? (parseInt(stWrap.style.height) || 130) : 0;
+      const newW = Math.floor(rect.width);
+      const newH = Math.max(200, Math.floor(rect.height) - stH);
+      if (mc.width !== newW || mc.height !== newH) {
+        mc.width  = newW;
+        mc.height = newH;
+      }
+      if (stc.width !== newW) {
+        stc.width  = newW;
+        stc.height = stH;
+      }
+    });
+    resizeObs.observe(canvasArea);
+    dbg('ResizeObserver attached to canvas-area');
+  }
+});
+
+dbg('Script loaded — waiting for window.load');
+
+// Auth check
+if (typeof window.AUTH !== 'undefined') { window.AUTH.requireLogin(); }
+</script>
+</body></html>

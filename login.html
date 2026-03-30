@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masuk — Platform Platooning V2V &amp; 5G</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --brand: #4f46e5;
+            --brand2: #7c3aed;
+            --teal: #0d9488;
+            --ink: #0f172a;
+            --muted: #64748b;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            background: #f1f5f9;
+        }
+
+        .split-left {
+            display: none;
+            flex: 1;
+            min-height: 100vh;
+            padding: 48px 56px;
+            background: linear-gradient(145deg, #1e1b4b 0%, #312e81 40%, #0f766e 100%);
+            color: #e2e8f0;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        @media (min-width: 960px) {
+            .split-left {
+                display: flex;
+            }
+        }
+
+        .split-left h1 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 800;
+            font-size: 2rem;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+            margin-bottom: 16px;
+            max-width: 420px;
+        }
+
+        .split-left p.lead {
+            font-size: 1rem;
+            line-height: 1.7;
+            opacity: 0.92;
+            max-width: 440px;
+            margin-bottom: 28px;
+        }
+
+        .bullets {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .bullets li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.9rem;
+            line-height: 1.55;
+            opacity: 0.95;
+        }
+
+        .bullets li::before {
+            content: '✓';
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            display: grid;
+            place-items: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .split-left footer {
+            font-size: 0.75rem;
+            opacity: 0.65;
+        }
+
+        .split-right {
+            flex: 1;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .split-right::before {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(79, 70, 229, 0.12) 0%, transparent 70%);
+            top: -120px;
+            right: -80px;
+            pointer-events: none;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 24px;
+            padding: 40px 36px;
+            box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 24px 48px -12px rgba(79, 70, 229, 0.15);
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            border-radius: 24px 24px 0 0;
+            background: linear-gradient(90deg, var(--brand), var(--brand2), var(--teal));
+        }
+
+        .mobile-tagline {
+            display: block;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        @media (min-width: 960px) {
+            .mobile-tagline {
+                display: none;
+            }
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .logo-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(124, 58, 237, 0.1));
+            border-radius: 16px;
+            margin-bottom: 14px;
+            font-size: 26px;
+            border: 1px solid rgba(79, 70, 229, 0.15);
+        }
+
+        .split-left-brand {
+            margin-bottom: 28px;
+        }
+
+        .univ-logo-on-dark {
+            display: block;
+            max-height: 56px;
+            width: auto;
+            max-width: 240px;
+            object-fit: contain;
+        }
+
+        .univ-logo-card-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 72px;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 16px;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+        }
+
+        .univ-logo-card {
+            max-height: 64px;
+            width: auto;
+            max-width: 260px;
+            object-fit: contain;
+        }
+
+        .logo-section h1 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 800;
+            font-size: 1.35rem;
+            color: var(--ink);
+            letter-spacing: -0.02em;
+        }
+
+        .logo-section .sub {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 0 0 24px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 8px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .form-group label svg {
+            width: 14px;
+            height: 14px;
+            color: var(--brand);
+            flex-shrink: 0;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            font-weight: 500;
+            transition: all 0.2s;
+            background: #f8fafc;
+            color: var(--ink);
+        }
+
+        .form-group input::placeholder {
+            color: #94a3b8;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--brand);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--brand), var(--brand2));
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 0.88rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            letter-spacing: 0.04em;
+            margin-top: 6px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(79, 70, 229, 0.38);
+        }
+
+        .error-message {
+            background: #fef2f2;
+            color: #b91c1c;
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            margin-bottom: 18px;
+            display: none;
+            border: 1px solid #fecaca;
+            font-weight: 500;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, rgba(13, 148, 136, 0.08), rgba(15, 118, 110, 0.05));
+            border: 1px solid rgba(13, 148, 136, 0.2);
+            padding: 14px 16px;
+            border-radius: 12px;
+            margin-top: 22px;
+            font-size: 0.78rem;
+            color: #115e59;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 800;
+            font-size: 0.65rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #0f766e;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="split-left">
+        <div>
+            <div class="split-left-brand">
+                <img data-univ-logo class="univ-logo-on-dark" alt="Telkom University" width="200" height="56" loading="eager">
+            </div>
+            <p style="font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;opacity:0.75;margin-bottom:12px">Telkom University</p>
+            <h1>Belajar platooning V2V tanpa pusing teori dulu</h1>
+            <p class="lead">Setelah masuk, Anda akan mengatur skenario, melihat mobil konvoi di simulasi, lalu membaca grafik — cara paling cepat memahami kenapa 5G dan V2V penting untuk konvoi pintar.</p>
+            <ul class="bullets">
+                <li>Simulasi longitudinal: jarak, rem, dan gangguan jaringan terlihat langsung.</li>
+                <li>Mode perbandingan ACC vs CACC menunjukkan manfaat komunikasi antar kendaraan.</li>
+                <li>Analisis otomatis menjelaskan stabilitas barisan dan kualitas informasi (AoI).</li>
+            </ul>
+        </div>
+        <footer>Penelitian platooning &amp; 5G NR-V2X · Fakultas Teknik Elektro</footer>
+    </div>
+
+    <div class="split-right">
+        <div class="login-container">
+            <p class="mobile-tagline"><strong>Platooning V2V &amp; 5G</strong> — simulasi edukatif. Masuk untuk melanjutkan.</p>
+            <div class="logo-section">
+                <div class="univ-logo-card-wrap">
+                    <img data-univ-logo class="univ-logo-card" alt="Telkom University" width="260" height="64" loading="eager">
+                </div>
+                <h1>Masuk ke platform</h1>
+                <div class="sub">Gunakan akun yang telah terdaftar</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div id="errorMessage" class="error-message"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        NIM / Username
+                    </label>
+                    <input type="text" id="username" placeholder="Contoh: 1101223157" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        Password
+                    </label>
+                    <input type="password" id="password" placeholder="Password Anda" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="login-btn" id="loginSubmit">Masuk</button>
+            </form>
+
+            <div class="info-box">
+                <strong>Akun demo (contoh)</strong>
+                NIM yang terdaftar di basis data lab — hubungi pengelola jika belum punya akses.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var candidates = [
+                '/ASET/Telkom%20University%20Logo%20PNG.png',
+                '/ASET/Telkom%20University%20Logo%20PNG.PNG',
+                '/ASET/Telkom%20University%20Logo.png',
+                '/ASET/Telkom%20University%20Logo.PNG',
+                '/ASET/Telkom%20University%20Logo%20PNG.jpg',
+                '/ASET/Telkom%20University%20Logo%20PNG.JPG',
+                '/frontend/ASET/logo-telkom.png', '/frontend/ASET/logo-telkom.svg', '/frontend/ASET/logo.png', '/frontend/ASET/logo.svg',
+                '/frontend/ASET/telkom-university.png', '/frontend/ASET/Telkom_University.png', '/frontend/ASET/TelkomUniversity.png',
+                '/frontend/ASET/telkom.png', '/frontend/ASET/logo.jpg', '/frontend/ASET/logo.jpeg', '/frontend/ASET/logo.webp'
+            ];
+            document.querySelectorAll('img[data-univ-logo]').forEach(function (img) {
+                var i = 0;
+                function next() {
+                    if (i >= candidates.length) {
+                        img.style.display = 'none';
+                        return;
+                    }
+                    img.src = candidates[i++];
+                }
+                img.onerror = function () { next(); };
+                next();
+            });
+        })();
+    </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/config.js"></script>
+    <script>
+        // Jika sudah login, langsung ke dashboard
+        if (window.AUTH && window.AUTH.isLoggedIn()) {
+            window.location.href = '/dashboard.html';
+        }
+
+        $(function () {
+            $('#loginForm').on('submit', function (e) {
+                e.preventDefault();
+                const username = $('#username').val().trim();
+                const password = $('#password').val().trim();
+                const errorMsg = $('#errorMessage');
+                const $btn = $('#loginSubmit');
+                const btnLabel = $btn.text();
+                errorMsg.hide();
+
+                $btn.prop('disabled', true).text('Menyambung…');
+
+                const loginUrl = (window.API_BASE || '') + '/login';
+
+                $.ajax({
+                    url: loginUrl,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ username, password }),
+                    timeout: 60000,
+                    success: function (response) {
+                        if (response.success) {
+                            // Simpan JWT token ke localStorage
+                            if (response.token) {
+                                window.AUTH.setUser(response.token, response.name, response.nim);
+                            }
+                            window.location.href = '/dashboard.html';
+                        } else {
+                            errorMsg.text(response.message || 'Login gagal.').show();
+                            $btn.prop('disabled', false).text(btnLabel);
+                        }
+                    },
+                    error: function (xhr, status) {
+                        if (status === 'timeout') {
+                            errorMsg.text('Server tidak merespons tepat waktu. Pastikan backend (Render) sudah aktif.').show();
+                        } else {
+                            const response = xhr.responseJSON;
+                            errorMsg.text(response?.message || 'Login gagal. Periksa NIM dan password.').show();
+                        }
+                        $btn.prop('disabled', false).text(btnLabel);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

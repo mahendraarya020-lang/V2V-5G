@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Bandingkan ACC vs CACC — Platooning V2V</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 45%, #f1f5f9 100%);
+      color: #0f172a;
+      font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+      min-height: 100vh;
+    }
+
+    .nav {
+      background: rgba(255,255,255,.96);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+      position: relative;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .nav::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #4f46e5, #7c3aed, #0d9488);
+    }
+
+    .nav-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #4f46e5;
+      font-weight: 800;
+      font-size: 0.92rem;
+      letter-spacing: -.02em;
+    }
+
+    .btn {
+      padding: 8px 18px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: .85rem;
+      transition: all .2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-green {
+      background: linear-gradient(135deg, #0d9488, #0f766e);
+      color: #fff;
+    }
+
+    .btn-purple {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff;
+    }
+
+    .btn-red {
+      background: linear-gradient(135deg, #f56565, #c53030);
+      color: #fff;
+    }
+
+    .btn-orange {
+      background: linear-gradient(135deg, #ed8936, #c05621);
+      color: #fff;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .15);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 12px;
+      height: calc(100vh - 52px - 90px);
+    }
+
+    .half {
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: rgba(255, 255, 255, .92);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
+    }
+
+    .half-acc {
+      border: 1.5px solid rgba(237, 137, 54, .3);
+    }
+
+    .half-cacc {
+      border: 1.5px solid rgba(56, 178, 172, .3);
+    }
+
+    .half-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      text-align: center;
+      padding: 8px;
+      border-radius: 8px;
+    }
+
+    .acc-title {
+      background: rgba(237, 137, 54, .1);
+      color: #c05621;
+    }
+
+    .cacc-title {
+      background: rgba(56, 178, 172, .1);
+      color: #2c7a7b;
+    }
+
+    canvas {
+      border-radius: 8px;
+      background: rgba(0, 0, 0, .04);
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .stat {
+      background: rgba(102, 126, 234, .06);
+      padding: 8px;
+      border-radius: 7px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: .68rem;
+      color: #718096;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .stat-val {
+      font-size: 1.1rem;
+      font-family: monospace;
+      font-weight: 700;
+      color: #2d3748;
+    }
+
+    .bottom-bar {
+      padding: 10px 24px;
+      background: rgba(255, 255, 255, .92);
+      border-top: 1px solid rgba(102, 126, 234, .12);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .btn-dist {
+      padding: 7px 14px;
+      border: 1.5px solid rgba(102, 126, 234, .2);
+      background: rgba(255, 255, 255, .9);
+      color: #4a5568;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: .8rem;
+      font-weight: 600;
+      transition: all .2s;
+    }
+
+    .btn-dist:hover {
+      background: rgba(102, 126, 234, .08);
+      border-color: #667eea;
+      color: #667eea;
+    }
+
+    .collision-flash {
+      animation: cflash 0.6s infinite;
+    }
+
+    @keyframes cflash {
+
+      0%,
+      100% {
+        background: rgba(245, 101, 101, .06);
+      }
+
+      50% {
+        background: rgba(245, 101, 101, .15);
+      }
+    }
+
+    .time-disp {
+      background: rgba(255, 255, 255, .95);
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-size: 1.5rem;
+      font-weight: 800;
+      font-family: monospace;
+      color: #4f46e5;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
+    }
+
+    .compare-edu {
+      margin: 0 16px 10px;
+      padding: 12px 18px;
+      background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(13, 148, 136, 0.06));
+      border: 1px solid rgba(79, 70, 229, 0.14);
+      border-radius: 14px;
+      font-size: 0.82rem;
+      color: #475569;
+      line-height: 1.55;
+    }
+    .compare-edu strong { color: #0f172a; }
+  </style>
+</head>
+
+<body>
+  <div class="nav">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <span class="nav-title">⚖️ ACC vs CACC — banding live</span>
+      <a href="/dashboard" class="btn btn-green">🏠 Beranda</a>
+      <a href="/analysis" class="btn btn-purple">📊 Analisis</a>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span class="time-disp"><span id="simTime">0.0</span>s</span>
+      <button class="btn btn-purple" id="startBtn">▶ START</button>
+      <button class="btn btn-red" id="stopBtn" style="display:none">■ STOP</button>
+    </div>
+  </div>
+
+  <p class="compare-edu"><strong>Untuk pemula:</strong> Kiri = mobil hanya memakai sensor jarak (ACC), seperti manusia dengan waktu reaksi ~0,7 s. Kanan = mobil saling kirim data V2V (CACC), jadi respons lebih cepat. Leader dan gangguan sama — bedanya hanya ada/tidaknya komunikasi. Tekan START, lalu coba gangguan untuk melihat perbedaan.</p>
+
+  <div class="split">
+    <!-- ACC Panel -->
+    <div class="half half-acc" id="accPanel">
+      <div class="half-title acc-title">🚗 ACC ONLY — No V2V — Reaction Time 0.7s</div>
+      <canvas id="accCanvas" width="900" height="400"></canvas>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Stability</div>
+          <div class="stat-val" id="accSI">1.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Max Spacing Err</div>
+          <div class="stat-val" id="accErr">0m</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Collision</div>
+          <div class="stat-val" id="accCol" style="color:#00ff88">NONE</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">FSM</div>
+          <div class="stat-val" id="accFSM" style="color:#f6ad55">ACC</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CACC Panel -->
+    <div class="half half-cacc" id="caccPanel">
+      <div class="half-title cacc-title">🛜 CACC — V2V Enabled — 10ms Latency</div>
+      <canvas id="caccCanvas" width="900" height="400"></canvas>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Stability</div>
+          <div class="stat-val" id="caccSI">1.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Max Spacing Err</div>
+          <div class="stat-val" id="caccErr">0m</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Collision</div>
+          <div class="stat-val" id="caccCol" style="color:#00ff88">NONE</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">FSM</div>
+          <div class="stat-val" id="caccFSM" style="color:#38b2ac">CACC</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <div style="font-size:.82rem;color:#718096">Inject disturbance to BOTH simulations simultaneously:</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-dist" onclick="inject('leader_brake')">🛑 LEADER BRAKE</button>
+      <button class="btn-dist" onclick="inject('acceleration_spike')">⬆ ACCEL SPIKE</button>
+      <button class="btn-dist" onclick="inject('network_degradation')">📡 NET DEGRADE</button>
+      <button class="btn-dist" onclick="inject('rsu_offline')">🔌 RSU OFFLINE</button>
+      <button class="btn-dist" onclick="inject('cut_in_vehicle')">🚗 CUT-IN P0</button>
+    </div>
+    <div style="font-size:.72rem;color:#a0aec0;max-width:420px" id="compareSeedInfo"></div>
+    <div style="font-size:.78rem;color:#718096;max-width:300px;text-align:right">
+      Ref: Ploeg et al. (2011). Both simulations use identical leader profile.<br>
+      Gap G-08 from gap_analysis_rekomendasi.
+    </div>
+  </div>
+
+  <script>
+    const config = JSON.parse(sessionStorage.getItem('simulationConfig') || '{"num_vehicles":4,"num_platoons":1,"initial_spacing":15,"desired_speed":20,"latency_ms":10,"packet_loss":1,"jitter_ms":2,"kp":0.5,"kd":0.3,"ki":0.01,"alpha":0.9,"tau_act":0.25,"time_headway":0.8,"security_delay_ms":3,"rsu_enabled":true,"rsu_position_m":460,"rsu_radius_m":95,"adaptive_comm_control":true,"curve_enabled":false,"curve_start_m":380,"curve_end_m":500,"random_seed":null}');
+    config.latency_ms = 10;  // Force CACC to use 10ms for fair comparison
+
+    const socket = (typeof window.createSocket === 'function')
+        ? window.createSocket()
+        : io(window.location.origin, { transports: ['websocket', 'polling'], reconnection: true });
+    const accCanvas = document.getElementById('accCanvas');
+    const caccCanvas = document.getElementById('caccCanvas');
+    const accCtx = accCanvas.getContext('2d');
+    const caccCtx = caccCanvas.getContext('2d');
+    let running = false;
+    let accColOccurred = false, caccColOccurred = false;
+
+    // Camera state per panel
+    const cam = { acc: { y: 0 }, cacc: { y: 0 } };
+    const MTX = 3.0;
+
+    // ── SOCKET ──────────────────────────────────────────────
+    socket.on('connect', () => { console.log('Connected'); });
+    socket.on('compare_started', (d) => {
+      running = true;
+      document.getElementById('stopBtn').style.display = 'inline-block';
+      document.getElementById('startBtn').style.display = 'none';
+      const el = document.getElementById('compareSeedInfo');
+      if (el && d) {
+        el.textContent = 'RNG: CACC seed ' + (d.random_seed_cacc ?? '—') + ' · ACC seed ' + (d.random_seed_acc ?? '—');
+      }
+    });
+    socket.on('compare_stopped', () => { running = false; document.getElementById('startBtn').style.display = 'inline-block'; document.getElementById('stopBtn').style.display = 'none'; });
+    socket.on('compare_update', d => { updatePanel(accCtx, accCanvas, d.acc, 'acc'); updatePanel(caccCtx, caccCanvas, d.cacc, 'cacc'); updateStats(d); });
+    socket.on('compare_collision', d => {
+      if (d.acc_collision && !accColOccurred) { accColOccurred = true; document.getElementById('accPanel').classList.add('collision-flash'); document.getElementById('accCol').textContent = '⚠ COLLISION'; document.getElementById('accCol').style.color = '#f56565'; }
+      if (d.cacc_collision && !caccColOccurred) { caccColOccurred = true; document.getElementById('caccPanel').classList.add('collision-flash'); document.getElementById('caccCol').textContent = '⚠ COLLISION'; document.getElementById('caccCol').style.color = '#f56565'; }
+    });
+
+    // ── RENDER PANEL ─────────────────────────────────────────
+    function updatePanel(ctx, canvas, data, side) {
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Smooth camera follow
+      const leader = data.vehicles.find(v => v.is_leader && v.platoon_id === 0);
+      if (leader) {
+        const target = leader.position * MTX - H / 2;
+        cam[side].y += (target - cam[side].y) * 0.1;
+      }
+
+      // Road
+      const rW = 160, rX = (W - rW) / 2;
+      ctx.fillStyle = '#111318'; ctx.fillRect(rX, 0, rW, H);
+      ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = 2; ctx.setLineDash([12, 12]);
+      ctx.beginPath(); ctx.moveTo(rX + rW / 2, 0); ctx.lineTo(rX + rW / 2, H); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(rX, 0); ctx.lineTo(rX, H); ctx.moveTo(rX + rW, 0); ctx.lineTo(rX + rW, H); ctx.stroke();
+
+      const isAcc = side === 'acc';
+      const mainColor = isAcc ? '#f6ad55' : '#38b2ac';
+
+      data.vehicles.forEach(v => {
+        const wy = v.position * MTX;
+        const sY = H - (wy - cam[side].y);
+        if (sY < -80 || sY > H + 80) return;
+        const sX = rX + rW / 2;
+        const zoom = 1.0;
+        const cL = 5 * MTX, cW = cL * 0.5;
+
+        // Vehicle color
+        let color = v.collided ? '#f56565' : v.is_leader ? '#00ffff' : isAcc ? '#f6ad55' : (v.fsm_state === 'CACC' ? '#38b2ac' : v.fsm_state === 'DEGRADED' ? '#68d391' : v.fsm_state === 'EMERGENCY' ? '#f56565' : '#f6ad55');
+
+        ctx.save(); ctx.translate(sX, sY); ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = color; ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(-cW / 2, -cL / 2, cW, cL, 4); ctx.fill(); ctx.stroke();
+        ctx.restore();
+
+        // Label
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('V' + v.id, sX, sY - cL / 2 - 8);
+        if (v.is_leader) { ctx.fillStyle = '#ffd700'; ctx.font = '9px Arial'; ctx.fillText('👑', sX, sY - cL / 2 - 20); }
+
+        // Mode label
+        ctx.fillStyle = color; ctx.font = 'bold 8px Arial';
+        const mode = isAcc ? 'ACC' : (v.fsm_state || v.control_mode);
+        ctx.fillText(mode, sX, sY + cL / 2 + 12);
+
+        // Spacing error
+        if (!v.is_leader) {
+          const ec = Math.abs(v.spacing_error) > 5 ? '#f56565' : Math.abs(v.spacing_error) > 2 ? '#f6ad55' : '#aaa';
+          ctx.fillStyle = ec; ctx.font = '7px monospace';
+          ctx.fillText('Δ:' + v.spacing_error.toFixed(1) + 'm', sX, sY + cL / 2 + 22);
+        }
+
+        // V2V link (CACC only)
+        if (!isAcc && !v.is_leader && v.communication_ok) {
+          const prev = data.vehicles.find(pv => pv.platoon_id === v.platoon_id && pv.position > v.position && pv.position - v.position < 60);
+          if (prev) {
+            const pY = H - (prev.position * MTX - cam[side].y);
+            ctx.strokeStyle = 'rgba(56,178,172,.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+            ctx.beginPath(); ctx.moveTo(sX, sY); ctx.lineTo(sX, pY); ctx.stroke(); ctx.setLineDash([]);
+            const prog = (Date.now() / 1000 * 60) % (Math.abs(pY - sY) || 1);
+            ctx.fillStyle = '#00ff88';
+            ctx.beginPath(); ctx.arc(sX, sY + prog * (pY > sY ? 1 : -1), 3, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      });
+
+      if (data.cut_in && data.cut_in.platoon_id === 0) {
+        const wy = data.cut_in.position * MTX;
+        const sY = H - (wy - cam[side].y);
+        const sX = rX + rW / 2;
+        const cL = 5 * MTX, cW = cL * 0.5;
+        ctx.save(); ctx.translate(sX, sY); ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = '#ed8936'; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(-cW / 2, -cL / 2, cW, cL, 4); ctx.fill(); ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = '#ed8936'; ctx.font = 'bold 8px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('CUT-IN', sX, sY - cL / 2 - 10);
+      }
+
+      // Side label overlay
+      ctx.fillStyle = isAcc ? 'rgba(246,173,85,.15)' : 'rgba(56,178,172,.15)';
+      ctx.fillRect(4, 4, 80, 22); ctx.fillStyle = isAcc ? '#f6ad55' : '#38b2ac';
+      ctx.font = 'bold 10px Arial'; ctx.textAlign = 'left';
+      ctx.fillText(isAcc ? 'ACC (no V2V)' : 'CACC (V2V ✓)', 10, 18);
+    }
+
+    function updateStats(d) {
+      document.getElementById('simTime').textContent = d.cacc.time.toFixed(1);
+
+      document.getElementById('accSI').textContent = d.acc.stability_index.toFixed(2);
+      document.getElementById('caccSI').textContent = d.cacc.stability_index.toFixed(2);
+      document.getElementById('accSI').style.color = d.acc.stability_index > 0.8 ? '#00ff88' : d.acc.stability_index > 0.5 ? '#f6ad55' : '#f56565';
+      document.getElementById('caccSI').style.color = d.cacc.stability_index > 0.8 ? '#00ff88' : d.cacc.stability_index > 0.5 ? '#f6ad55' : '#f56565';
+
+      const accErrs = d.acc.vehicles.filter(v => !v.is_leader).map(v => Math.abs(v.spacing_error || 0));
+      const caccErrs = d.cacc.vehicles.filter(v => !v.is_leader).map(v => Math.abs(v.spacing_error || 0));
+      document.getElementById('accErr').textContent = accErrs.length ? (Math.max(...accErrs)).toFixed(1) + 'm' : '0m';
+      document.getElementById('caccErr').textContent = caccErrs.length ? (Math.max(...caccErrs)).toFixed(1) + 'm' : '0m';
+
+      const caccFSMs = [...new Set(d.cacc.vehicles.filter(v => !v.is_leader).map(v => v.fsm_state || 'CACC'))];
+      const dom = caccFSMs.includes('EMERGENCY') ? 'EMERGENCY' : caccFSMs.includes('ACC') ? 'ACC' : caccFSMs.includes('DEGRADED') ? 'DEGRADED' : 'CACC';
+      document.getElementById('caccFSM').textContent = dom;
+      document.getElementById('caccFSM').style.color = dom === 'EMERGENCY' ? '#f56565' : dom === 'ACC' ? '#f6ad55' : dom === 'DEGRADED' ? '#68d391' : '#38b2ac';
+    }
+
+    function inject(type) { socket.emit('inject_compare_disturbance', { type }); }
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+      accColOccurred = false; caccColOccurred = false;
+      document.getElementById('accPanel').classList.remove('collision-flash');
+      document.getElementById('caccPanel').classList.remove('collision-flash');
+      document.getElementById('accCol').textContent = 'NONE'; document.getElementById('accCol').style.color = '#00ff88';
+      document.getElementById('caccCol').textContent = 'NONE'; document.getElementById('caccCol').style.color = '#00ff88';
+      socket.emit('start_compare', { config });
+    });
+    document.getElementById('stopBtn').addEventListener('click', () => { socket.emit('stop_compare'); });
+
+    function animate() { requestAnimationFrame(animate); }
+    animate();
+
+    if (typeof window.AUTH !== 'undefined') { window.AUTH.requireLogin(); }
+  </script>
+</body>
+
+</html>
